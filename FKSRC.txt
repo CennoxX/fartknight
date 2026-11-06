@@ -1,0 +1,866 @@
+.FKNIGHT
+.Tiles: 0 floor 1 wall 2 key 3 exit
+.4 gem 5 trap 6 crate 7 plate 8 gate closed
+.9 lever off 10 crate on plate 11 gate open 12 lever on
+.13 crate in open gate
+[0000000000000000]->Pic1
+[FF888888FF222222]
+[0060909F9A600000]
+[7E4242424A42427E]
+[00183C7E7E3C1800]
+[00004949DBDBFF00]
+[FFC3A59999A5C3FF]
+[00007E42427E0000]
+[FF555555555555FF]
+[000040201008183C]
+[FFFFE7DBDBE7FFFF]
+[8100000000000081]
+[000002040810183C]
+[FFC3A59999A5C3FF]
+
+.Player, 2 frames
+[7C547C7464FE386C]->Pic2
+[7C547C74E67C3828]
+.Guard
+[3C7E5A7E3C7EBD24]->Pic3
+.HUD icons, inverted: heart, gem (+8), key (+16)
+[FF93010183C7EFFF]->Pic4
+[FFE7C38181C3E7FF]
+[FF9F6F60659FFFFF]
+.Sight dots
+[0000240000240000]->Pic5
+.Black
+[FFFFFFFFFFFFFFFF]->Pic6
+.Title image 96x64, RLE: byte = inverted image byte,
+.00,n = n black bytes
+[001424000A027400031F0006037C0001]->Pic7
+[01F01FFC000503FC00011FF01FFCC380]
+[0002C003E079DFF01FFCC3F8F8F1E0F3]
+[0779DFF007F9C1FEFF71D8E07F39DFB0]
+[07F9E1FEFF73DCE67F39DB800703E1CE]
+[DF779EEE7339C3800703F1CE1D779EEE]
+[7039C38007E3F1CE1C7E1FEE77BFC380]
+[07E3B1FE1C7E1FEE77BFC38007E739FC]
+[1C7F1FEE77BFC38007E739DC1CF71DEE]
+[73B9C380070FF9DE1CF79DEE73B9E380]
+[070FFDDE1CF79CEE7FB9E3800F0F1DCF]
+[1CF3DC6E3FB9E3C00F0F1DCF1CF3EC0C]
+[1E39E7C00F9F00010798E1E0000327C0]
+[1F800009C018001207E0000A0FE0000A]
+[0C000B08FC000A39FA000A01FA000A03]
+[FE00060F00030300073F800002027A00]
+[067F000201F3DA0006FFE0000107F9CA]
+[0006FFF003FFCEFA00067FF001FE3A7E]
+[00060FB00001FC7D040005019FC0F0F8]
+[71F0000503DFE1F8781A74E000041BFF]
+[C5FC703CD6E000043FFF8FF800011DC6]
+[E000043FFECFFE00010DC6C000043EFE]
+[DFFFE0E1C000051F7F1FFF847C600005]
+[0E3F9FF60F39E000061F0FF80FF8B300]
+[060E02F81FF07F000701F01CC07C0009]
+[0800013C000B38000FFFFFFDFFEEFFFF]
+[FEFFDFFFDF000C01E000017C00021C00]
+[013803C30085]
+.getKey codes of letters A-Z
+[2F271F2E261E160E2D251D150D2C241C140C2B231B130B2A221A]->GDB3
+
+.Levels come from AppVar FKLVLS (created by FKDATA)
+
+.Variables
+.X,Y player V facing F frame
+.K key S save data H lives L level U temp
+.W 1=exit 2=dead 3=restart C lever O crates on plates
+.D direction T key timer M guards
+.N guard timer R guard speed Z caught
+.E guard nearby (after GU)
+
+.L1 memory
+.0-575 map 32x18 with 3-tile wall border, (x,y)=L1+99+y*32+x
+.576 guards, each X,Y,direction
+.594 pointer to level data (2 bytes)
+.596 level count
+.View table in L3 (see Lbl VT)
+
+.No run indicator, no Done
+DiagnosticOff
+Fix 5
+.Save data: byte 0 = unlocked levels,
+.byte 1 = gems this run, byte 2 = gem taken in this level
+.byte 3 = levels this run, 4-5 = steps this run
+.from byte 6: 5 high score entries, 12 bytes each:
+.name 8, gems 1, levels 1, steps 2
+.(gems+levels read as one word = levels*256+gems)
+.AppVar names as bytes: 15 = AppVar type, name, 00
+.FKSAVE
+[15464B5341564500]->Str9
+.FKLVLS
+[15464B4C564C5300]->Str8
+.Unarchive the AppVars
+!If GetCalc(Str9)
+	UnArchive Str9
+End
+!If GetCalc(Str9)
+	GetCalc(Str9,66)->S
+	Return!If S
+	Fill(S,66,0)
+End
+!If GetCalc(Str8)
+	UnArchive Str8
+End
+.Get pointers only after nothing else is created
+GetCalc(Str9)->S
+!If GetCalc(Str8)->P
+	ClrDraw
+	Text(8,24,"RUN FKDATA FIRST")
+	DispGraph
+	Pause 3600
+	Goto QT
+End
+P->{L1+594}^^r
+.Count levels
+1->L
+sub(LP)
+While {P}
+	L+1->L
+	sub(LP)
+End
+L-1->{L1+596}
+1->L
+
+.Title with level select
+Lbl TS
+3->H
+0->{S+1}
+0->{S+2}
+0->{S+3}
+0->{S+4}^^r
+sub(TP)
+.Unlocked: byte 0 of save data
+{S}->U
+!If U
+	1->U
+End
+If U>{L1+596}
+	{L1+596}->U
+End
+If L>U
+	U->L
+End
+While 1
+	Rect(0,53,96,11)
+	Fix 3
+	Text(18,55,"< LEVEL")
+	Text(48,55,L>Dec)
+	Text(58,55,"/")
+	Text(63,55,U>Dec)
+	Text(74,55,">")
+	Fix 2
+	DispGraph
+	Repeat getKey(0)=0
+	End
+	0->G
+	Repeat G
+		getKey->G
+	End
+	If G=15
+		Goto QT
+	End
+	.ALPHA: high scores
+	If G=48
+		5->J
+		sub(HW)
+		Goto TS
+	End
+	If G=2 and (L>1)
+		L-1->L
+	End
+	If G=3 and (L<U)
+		L+1->L
+	End
+	If G=54 or (G=9)
+		0->{S+2}
+		Goto NS
+	End
+End
+
+Lbl NL
+.Gem from this level is safe
+0->{S+2}
+{S+3}+1->{S+3}
+L+1->L
+If L>{L1+596}
+	Goto WN
+End
+.Save progress
+If L>{S}
+	L->{S}
+End
+Lbl NS
+.Died: take back the gem from this level
+If {S+2}
+	{S+1}-1->{S+1}
+	0->{S+2}
+End
+sub(LV)
+sub(LD)
+sub(VT)
+.Guard speed
+34-L->R
+0->K->W->T->F->N->Z->C
+1->V
+Rect(0,0,96,64)
+sub(HU)
+sub(DR)
+
+While 1
+	Pause 10
+	.getKey reports each press only once:
+	.for CLEAR, MODE, 2ND
+	getKey->G
+	.CLEAR: back to title
+	If G=15
+		Goto TS
+	End
+	.MODE: restart level
+	If G=55
+		H-1->H
+		If H=0
+			Goto GO
+		End
+		Goto NS
+	End
+	If G=54
+		sub(AC)
+	End
+	.Arrows read directly: new press = move now, hold = repeat
+	0->D
+	sub(HD)
+	If D
+		If T=0
+			1->T
+		Else
+			T+1->T
+			If T>24
+				14->T
+			Else
+				0->D
+			End
+		End
+	Else
+		0->T
+	End
+	If D
+		sub(MV)
+	End
+	N+1->N
+	If N>R
+		0->N
+		sub(GU)
+		If E
+			sub(DR)
+		End
+		sub(CC)
+	End
+	If W=1
+		Goto NL
+	End
+	If W=2
+		Goto GO
+	End
+	If W=3
+		Goto NS
+	End
+End
+
+Lbl WN
+ClrDraw
+Fix 2
+Fix 1
+Text(27,4,"THE END")
+Fix 0
+Text(8,22,"HE FLED THE LAND,")
+Text(8,29,"AS THE KING PLANNED.")
+Text(8,36,"YET EVER SINCE,")
+Text(8,43,"THE WINDS BLOW GRAND.")
+DispGraph
+Goto EN
+
+Lbl GO
+ClrDraw
+Fix 2
+Fix 1
+Text(21,4,"GAME OVER")
+Fix 0
+Text(14,22,"OUR HERO FELL,")
+Text(14,29,"THE BARDS WILL TELL")
+Text(14,36,"OF ONE BRAVE KNIGHT")
+Text(14,43,"AND ONE BAD SMELL.")
+DispGraph
+
+Lbl EN
+Pause 1800
+sub(WK)
+sub(HS)
+Goto TS
+
+Lbl QT
+Normal
+Fix 0
+Fix 2
+Fix 4
+ClrDraw
+ClrHome
+Return
+
+.View table (diamond)
+Lbl VT
+.View table in L3: whole screen right of the HUD, 10x8 tiles
+.L3: count, player X, player Y, then each offset+100,X,Y
+.L3+256: 16x16 visibility for dx,dy (each +8)
+Fill(L3,512,0)
+L3+3->P
+48->{L3+1}
+24->{L3+2}
+For(J,0,7)
+	For(I,0,9)
+		I-4->D
+		J-3->E
+		sub(VE)
+	End
+End
+Return
+
+.Entry for offset D,E
+Lbl VE
+E*32+D+100->{P}
+D*8+{L3+1}->{P+1}
+E*8+{L3+2}->{P+2}
+P+3->P
+{L3}+1->{L3}
+1->{E+8*16+D+8+L3+256}
+Return
+
+.Held direction
+Lbl HD
+If getKey(1)
+	1->D
+End
+If getKey(2)
+	2->D
+End
+If getKey(3)
+	3->D
+End
+If getKey(4)
+	4->D
+End
+Return
+
+.A,B one step in direction Q
+Lbl SP
+If Q=1
+	B+1->B
+ElseIf Q=2
+	A-1->A
+ElseIf Q=3
+	A+1->A
+Else
+	B-1->B
+End
+Return
+
+.Tile A,B -> pointer P, value G
+Lbl TL
+B*32+A+L1+99->P
+{P}->G
+Return
+
+.P = start of level L
+Lbl LP
+{L1+594}^^r+1->P
+For(I,2,L)
+	sub(SK)
+	P+{P}+1->P
+End
+Return
+
+.Skip the poem (lines up to [00][00])
+Lbl SK
+While {P}
+	P+length(P)+1->P
+End
+P+1->P
+Return
+
+.Load level
+Lbl LD
+sub(LP)
+sub(SK)
+Fill(L1,576,1)
+0->M->O
+.Inner map 14x10 after a length byte, half bytes:
+.tile, or 15,tile,n = n+4 times tile
+P+1->P
+0->J->I
+While I<140
+	sub(NB)
+	1->Q
+	If A=15
+		sub(NB)
+		A->G
+		sub(NB)
+		A+4->Q
+		G->A
+	End
+	For(Q)
+		I/14*32+(I^14)+L1+132->U
+		If A<10
+			A->{U}
+		Else
+			0->{U}
+			If A=10
+				I^14+1->X
+				I/14+1->Y
+			Else
+				M+1->M
+				M*3+L1+573->E
+				I^14+1->{E}
+				I/14+1->{E+1}
+				A-10->{E+2}
+			End
+		End
+		I+1->I
+	End
+End
+Return
+
+.Next half byte J of the map -> A
+Lbl NB
+{J/2+P}->A
+If J^2
+	A^16->A
+Else
+	A/16->A
+End
+J+1->J
+Return
+
+.Step in direction D
+Lbl MV
+D->V
+D->Q
+X->A
+Y->B
+sub(SP)
+sub(TL)
+ReturnIf G=1 or (G=9)
+If G=8
+	Return!If C+O
+End
+If G=3
+	Return!If K
+	1->W
+End
+.Push crate
+If G=6 or (G=10) or (G=13)
+	G->E
+	P->U
+	sub(SP)
+	.No guard behind it
+	0->I
+	For(J,1,M)
+		If {J*3+L1+573}=A and ({J*3+L1+574}=B)
+			1->I
+		End
+	End
+	ReturnIf I
+	sub(TL)
+	If G=0
+		6->{P}
+	ElseIf G=7
+		10->{P}
+		O+1->O
+	ElseIf G=5
+		0->{P}
+	ElseIf G=8 and (C+O!=0)
+		13->{P}
+	Else
+		Return
+	End
+	If E=10
+		7->{U}
+		O-1->O
+	ElseIf E=13
+		8->{U}
+	Else
+		0->{U}
+	End
+	X->A
+	Y->B
+	sub(SP)
+	0->G
+End
+If G=2
+	1->K
+	0->{P}
+	sub(HU)
+End
+.Gem: count now, take back on death
+If G=4
+	0->{P}
+	{S+1}+1->{S+1}
+	1->{S+2}
+	.every 5 gems = 1 life
+	!If {S+1}^5
+		If H<9
+			H+1->H
+		End
+		Rect(0,0,96,64)
+		DispGraph
+		Pause 300
+	End
+	sub(HU)
+End
+A->X
+B->Y
+{S+4}^^r+1->{S+4}^^r
+1-F->F
+.Trap (before DR, DR changes G)
+If G=5
+	sub(HT)
+End
+sub(DR)
+sub(CC)
+Return
+
+.2ND: lever
+Lbl AC
+X->A
+Y->B
+V->Q
+sub(SP)
+sub(TL)
+If G=9
+	1-C->C
+	sub(DR)
+End
+Return
+
+.Guards: walk straight, turn around at obstacles
+Lbl GU
+0->E
+For(J,1,M)
+	J*3+L1+573->U
+	{U}->A
+	{U+1}->B
+	{U+2}->Q
+	sub(SP)
+	sub(TL)
+	If G=0 or (G=2) or (G=4) or (G=7) or (G=8 and (C+O!=0))
+		A->{U}
+		B->{U+1}
+	Else
+		5-Q->{U+2}
+	End
+	If {U}-X+9<18 and ({U+1}-Y+7<15)
+		1->E
+	End
+End
+Return
+
+.Caught? 3 tiles of sight
+Lbl CC
+For(J,1,M)
+	J*3+L1+573->U
+	{U}->A
+	{U+1}->B
+	If A=X or (B=Y)
+		If A-X+3<7 and (B-Y+3<7)
+			{U+2}->Q
+			For(I,0,3)
+				If A=X and (B=Y)
+					1->Z
+				End
+				sub(SP)
+				sub(TL)
+				If G=1 or (G=3) or (G=6) or (G>8) or (G=8 and (C+O=0))
+					4->I
+				End
+			End
+		End
+	End
+End
+If Z
+	sub(HT)
+End
+Return
+
+.Hit
+Lbl HT
+0->Z
+ReturnIf W
+H-1->H
+RectI(0,0,96,64)
+DispGraph
+Pause 1800
+If H=0
+	2->W
+	Return
+End
+3->W
+Return
+
+.Draw: tiles from the view table, no clearing
+Lbl DR
+Y*32+X+L1-1->P
+L3+3->U
+For({L3})
+	{{U}+P}->G
+	If G>7
+		If G=8 and (C+O!=0)
+			11->G
+		ElseIf G=9 and C
+			12->G
+		End
+	End
+	Pt-Off({U+1},{U+2},G*8+Pic1)
+	U+3->U
+End
+.Guards and sight only in view
+For(J,1,M)
+	J*3+L1+573->U
+	{U}->A
+	{U+1}->B
+	If A-X+11<22 and (B-Y+11<22)
+		{U+2}->Q
+		sub(VS)
+		If D
+			Pt-Off(A-X*8+{L3+1},B-Y*8+{L3+2},Pic3)
+		End
+		For(I,1,3)
+			sub(SP)
+			sub(TL)
+			If G=1 or (G=3) or (G=6) or (G>8) or (G=8 and (C+O=0))
+				4->I
+			Else
+				sub(VS)
+				If D
+					Pt-On(A-X*8+{L3+1},B-Y*8+{L3+2},Pic5)
+				End
+			End
+		End
+	End
+End
+F*8+Pic2->E
+If V=2
+	flipH(E)->E
+End
+Pt-Off({L3+1},{L3+2},E)
+DispGraph
+Return
+
+.D = 1 if tile A,B is in view
+Lbl VS
+0->D
+If A-X+8<16 and (B-Y+8<16)
+	{B-Y+8*16+(A-X+8)+L3+256}->D
+End
+Return
+
+.HUD on the left, only on change
+Lbl HU
+Fix 3
+Text(1,1,"L")
+Text(6,1,L>Dec)
+Pt-Off(1,16,Pic4)
+Pt-Off(0,24,Pic6)
+Text(3,25,H>Dec)
+Pt-Off(1,35,Pic4+8)
+Pt-Off(0,43,Pic6)
+Pt-Off(8,43,Pic6)
+Text({S+1}<10*2+1,44,{S+1}>Dec)
+Fix 2
+If K
+	Pt-Off(1,54,Pic4+16)
+End
+Return
+
+.Unpack title image into the buffer
+Lbl TP
+Pic7->P
+L6->U
+While U<(L6+768)
+	{P}->A
+	P+1->P
+	If A
+		255-A->{U}
+		U+1->U
+	Else
+		For({P})
+			255->{U}
+			U+1->U
+		End
+		P+1->P
+	End
+End
+Return
+
+.Wait: release, then a key (CLEAR quits)
+Lbl WK
+Repeat getKey(0)=0
+End
+Repeat getKey(0)
+End
+If getKey(15)
+	Normal
+	Fix 0
+	Fix 2
+	Fix 4
+	ClrDraw
+	ClrHome
+	Return^^r
+End
+Repeat getKey(0)=0
+End
+getKey
+Return
+
+.Level screen with poem
+Lbl LV
+ClrDraw
+Fix 2
+Fix 1
+Text(26,0,"LEVEL")
+Text(62,0,L>Dec)
+Fix 0
+sub(LP)
+For(J,0,4)
+	If {P}
+		Text(4,J*7+13,P)
+		P+length(P)+1->P
+	End
+End
+Text(4,50,"LIVES")
+Text(28,50,H>Dec)
+Text(54,50,"GEMS")
+Text(76,50,{S+1}>Dec)
+DispGraph
+Pause 1800
+Text(26,57,"PRESS A KEY")
+DispGraph
+sub(WK)
+Return
+
+.High scores: rank by levels, gems, then fewer steps
+Lbl HS
+{S+1}-{S+2}->A
+{S+3}*256+A->Q
+{S+4}^^r->R
+5->J
+If Q>255
+	For(I,0,4)
+		I*12+S+6->P
+		If J=5
+			If Q>{P+8}^^r or (Q={P+8}^^r and (R<{P+10}^^r))
+				I->J
+			End
+		End
+	End
+End
+If J<5
+	4->I
+	While I>J
+		I-1*12+S+6->P
+		Copy(P,P+12,12)
+		I-1->I
+	End
+	J*12+S+6->P
+	Fill(P,8,0)
+	Q->{P+8}^^r
+	R->{P+10}^^r
+	.Type name, DEL deletes, ENTER done
+	0->I
+	0->G
+	Repeat G=9 and (I!=0)
+		sub(HL)
+		Text(16,57,"TYPE NAME, ENTER")
+		DispGraph
+		0->G
+		Repeat G
+			getKey->G
+		End
+		If G=56 and (I!=0)
+			I-1->I
+			0->{P+I}
+		End
+		If I<8
+			inData(G,GDB3,26)->A
+			If A
+				A+64->{P+I}
+				I+1->I
+			End
+		End
+	End
+End
+Lbl HW
+sub(HL)
+Text(26,57,"PRESS A KEY")
+DispGraph
+sub(WK)
+Return
+
+.Draw list, row J inverted (5 = none)
+Lbl HL
+ClrDraw
+Fix 1
+Text(12,0,"HALL OF WIND")
+Fix 0
+Text(0,10,"#")
+Text(6,10,"NAME")
+Text(50,10,"LV")
+Text(62,10,"GEM")
+Text(78,10,"STEP")
+Line(0,17,95,17)
+For(C,0,4)
+	C*12+S+6->V
+	C*7+19->E
+	If C=J
+		Rect(0,E-1,96,7)
+		Fix 3
+	End
+	Text(0,E,C+1>Dec)
+	Copy(V,L1+600,8)
+	0->{L1+608}
+	Text(6,E,L1+600)
+	If {V+9}
+		{V+9}->A
+		58->B
+		sub(RN)
+		{V+8}->A
+		75->B
+		sub(RN)
+		{V+10}^^r->A
+		94->B
+		sub(RN)
+	End
+	Fix 2
+End
+Return
+
+.Number A right-aligned to x=B in row E
+Lbl RN
+1->D
+If A>9
+	2->D
+End
+If A>99
+	3->D
+End
+If A>999
+	4->D
+End
+If A>9999
+	5->D
+End
+Text(B-(D*4),E,A>Dec)
+Return

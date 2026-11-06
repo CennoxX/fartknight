@@ -1,0 +1,410 @@
+..FKLVL
+.Levels for FKNIGHT, included by FKDATA
+.Per level: poem lines each followed by [00], then [00],
+.then 10 rows of 14 tiles, the wall border is added automatically
+.W wall . floor X start K key E exit G gem
+.F trap B crate P plate T gate H lever
+.1-4 guard down/left/right/up
+
+[00]->GDB1
+.Level 1
+"SILENT, BUT GRAND,"
+[00]
+"THE KING TOOK A STAND,"
+[00]
+"SIR FARTALOT,"
+[00]
+"FLEE THE LAND!"
+[00]
+[00]
+"X.EW.........."
+"...W.WWWWWWWW."
+"...W.W........"
+".....W.WWWWWWW"
+"WWWWWW3......."
+"WWWW.........."
+"WWWW.........."
+"K.......2....."
+"WWWWWWWWWWW.WW"
+"WWWWWWWWWWW..G"
+.Level 2
+"GUARDS STARE AHEAD,"
+[00]
+"AS STIFF AS THE DEAD."
+[00]
+"WALK IN THEIR WAKE,"
+[00]
+"KEEP QUIET INSTEAD."
+[00]
+[00]
+"WWW.WWW.WWWWWW"
+"WWW.WWW.WWWKFG"
+".....3......WF"
+".WWWWWWWWWWWW."
+".WWWWWWWWWWWW."
+"...F...FEWWWW."
+".....F...WWWW."
+".WWWWWWWWWWWW."
+"...WWWWWWWW.B."
+"X............."
+.Level 3
+"SPIKES CHEW ON WOOD,"
+[00]
+"AS ALL SPIKES SHOULD."
+[00]
+"GUARDS SNIFF THE AIR,"
+[00]
+"WOOD STOPS THEM GOOD."
+[00]
+[00]
+"WWWWWWWWWWWWWW"
+".FGWWWWWWWWWWW"
+"..FWWWWWWWWWWW"
+"X..WWWWWWWWWWW"
+"...WWWWWWWW..."
+".....3........"
+"...WWWWWWWW..."
+"WW.....WWWW..K"
+"E.B..B.WWWWWWW"
+"WWF....WWWWWWW"
+.Level 4
+"A GATE OF STEEL"
+[00]
+"WITH NO APPEAL"
+[00]
+"LONGED FOR SOME WEIGHT"
+[00]
+"TO SEAL THE DEAL."
+[00]
+[00]
+"XWWP...WW.WKWG"
+"....W..WW.WFW."
+"...W...WW.W.W."
+"F......WW.W.W."
+".B.W..BWW.W.W."
+"W.WW.W.WW.W.W."
+"....W..W..W.W."
+"...W...T..F..."
+"...WW..W......"
+".....W.W..F..E"
+.Level 5
+"THE HALL STANDS WIDE,"
+[00]
+"GUARDS RACE INSIDE,"
+[00]
+"THEIR PATHS CROSS,"
+[00]
+"KEEP TO THE SIDE."
+[00]
+[00]
+"..X...3......K"
+".............."
+".............."
+".............."
+".............."
+"......21..4..."
+".............."
+".............."
+".............."
+"G.4.........2E"
+.Level 6
+"HIS CRATE, HIS SHIELD,"
+[00]
+"MADE GUARDS YIELD."
+[00]
+"THEY BLAMED THE DOG"
+[00]
+"AS THE GATE UNSEALED."
+[00]
+[00]
+"X....W........"
+".W...T.WWWWWW."
+".WWW.W..3G...K"
+"..B..WWWWWWWWW"
+"WWWW.WWWWWWWWW"
+"........P...2."
+".WWW.WWWWWWWWW"
+".....W.W.W.W.."
+".3..........2."
+".....W.W.W.W.E"
+.Level 7
+"A CRATE IN A CRACK"
+[00]
+"BLOCKS THE WAY BACK."
+[00]
+"HE THOUGHT IT THROUGH,"
+[00]
+"AND SOFTLY WENT QUACK."
+[00]
+[00]
+"X..W......1..."
+".B.T.WW4WW.WW."
+"...WWWWG.W.WWH"
+"W.WWWWWW.WWWWW"
+"...1WWWW.WW.EW"
+"W...WWWW.WWKWW"
+"....WWWW...3.."
+".W..WWWW.BWWWW"
+"....P.FW..WWWW"
+"WWWWW.T...WWWW"
+.Level 8
+"THE PLATE IS NEAR,"
+[00]
+"THE PATH NOT CLEAR."
+[00]
+"A WOODEN FRIEND"
+[00]
+"HIDES MORE THAN FEAR."
+[00]
+[00]
+"WWWWWP....BXWW"
+"WWWWFBW.BB.W.W"
+"WWWW..W..B.W.W"
+"W.FEW..WWWWW.K"
+"W..W...WWWWW.W"
+"GW.W..WWWWWW4W"
+"....W.WWW..W.W"
+".......WW.BW.W"
+"..W....T...B.W"
+"..B.W.WW.....W"
+.Level 9
+"THE LEVER SAT TIGHT,"
+[00]
+"AT THE END, IN SIGHT."
+[00]
+"A GUARD IN A BOX"
+[00]
+"CANNOT SNIFF OR FIGHT."
+[00]
+[00]
+"X..W3........."
+"...T...W...W.."
+"...W...W...W.K"
+"W.WWWWWWWWWWWW"
+"........WWWWWW"
+"...WWWB.WWWWWW"
+"...WWG....3..H"
+"...WWWWWWWWWWW"
+"W.WWWEWWWWWWWW"
+"W.3......WWWWW"
+.Level 10
+"SPIKES IN THE FLOOR,"
+[00]
+"A DRAFT FROM THE DOOR."
+[00]
+"HE NUDGED SOME WOOD,"
+[00]
+"SPIKES BIT NO MORE."
+[00]
+[00]
+"X...WW.....BFG"
+"..BBW.......BW"
+"....F........."
+"E...WW........"
+"WWWWWWWWWWW.WW"
+"...F...WWWW..W"
+"...W.1.WWW...W"
+"...W...W...W.."
+".K.W...F......"
+"...W...W......"
+.Level 11
+"A CRATE BY THE GATE,"
+[00]
+"THE HOUR GROWS LATE,"
+[00]
+"THE KEEP STANDS TALL,"
+[00]
+"DECIDE YOUR FATE."
+[00]
+[00]
+".2..........XW"
+".W.W.W.W.W.W.W"
+"3............W"
+"WWWWWTBWWWWWWW"
+"K.....P2G.WWWW"
+"WWWWWW.WWWWWWW"
+"WWWWWWFWWWWWWW"
+".W.W.W.W.W.W.."
+".3............"
+".W.W.W.W.W.W.E"
+.Level 12
+"FOUR CRATES CLOSE IN,"
+[00]
+"NO ROOM TO SPIN."
+[00]
+"TAKE ONE FOR A WALK,"
+[00]
+"THERE AND BACK AGAIN."
+[00]
+[00]
+"WWWWK....WWWWW"
+"G.WWWW3.F..WWW"
+"..WWWWWWTWWWWW"
+"..1..W3....WWW"
+".W.W.W.WBW.WWW"
+".......BXB.WWW"
+".W.W.W.WBW.WWW"
+".....WP....WWW"
+"WWWWWWWWWWFWWW"
+"WWWWE........2"
+.Level 13
+"FILL PITS, STAND TALL,"
+[00]
+"CRATES CROSS THE HALL."
+[00]
+"SPEED UP"
+[00]
+"WHILE BY THE WALL."
+[00]
+[00]
+".....WWW..WWWW"
+".BWW.WW..B.WWW"
+".XWF.F.W.....W"
+".B...W..B..FWW"
+".....W....WPWW"
+"WWWWWWWWWWWTWW"
+"WWG....WW....."
+"WW.B.WF......."
+"WW1.WWW.B....F"
+"WE.WWWWW.WW.WK"
+.Level 14
+"A LEVER STOOD,"
+[00]
+"AS LEVERS SHOULD."
+[00]
+"BUT WHAT IT FREES"
+[00]
+"MIGHT NOT SMELL GOOD."
+[00]
+[00]
+"X...TGWW1WWWWW"
+"....HWWW.WWWWW"
+".WWWWWWW.WWWWW"
+".PWWWWWWTWWWWW"
+".........F...K"
+"WBWWWW.W.WWWWW"
+"W.WWWW.W.WWWWW"
+"W.WWWW.W.WWWWW"
+"W.WWWWBW4....E"
+"W........WWWWW"
+.Level 15
+"GUARDS STALK THE HALL,"
+[00]
+"HE TIPTOES, SMALL."
+[00]
+"PFFT! JUST THE DRAFT."
+[00]
+"SNIFF NOT. WALK TALL."
+[00]
+[00]
+"...W.........."
+"1.....2.....BF"
+"...W........1."
+"...W...W.WW..."
+"...WG..WBWWW.W"
+".WWWWWWWKW...."
+"...FWWWW.W...."
+"..W.BFWW.F...."
+".W.BXBWWWW..B."
+"FEW.B..WWW...."
+.Level 16
+"SPIKES WERE HIS PEN,"
+[00]
+"FILL THEM, AND THEN!"
+[00]
+"A CRATE MAKES A FENCE"
+[00]
+"AND DOWNSTAIRS AGAIN."
+[00]
+[00]
+"X.......WWWWWW"
+"....BBB.WWWWWW"
+"WWWW.W.WWWWWWW"
+"WWWW.W.WWWWWWW"
+"G3..F........K"
+"WWWW.WWWWWWWWW"
+"WET..WWWWW...W"
+"WWW..........W"
+"WWWWWWWWWW...W"
+"WWWWWWH.2F...W"
+.Level 17
+"THE GATE SWINGS WIDE,"
+[00]
+"HE STROLLS OUTSIDE."
+[00]
+"A WEDGE IN TIME"
+[00]
+"KEEPS HIM ON HIS SIDE."
+[00]
+[00]
+"WWWWWWKWW.W.WG"
+"WWWWWW.W.....2"
+"WWWWWW1WW.WWWE"
+"WWWWWWTWW...WW"
+"W....PT.....WW"
+"W..WWW.WW...WW"
+"WWFWWWP.....WW"
+".....W.WWWWWF."
+".BB..WW.B.B..."
+"..W...F....X.."
+.Level 18
+"A CRATE ON THE PLATE"
+[00]
+"MAY TIRE OF ITS WAIT."
+[00]
+"FETCH IT A FRIEND"
+[00]
+"TO TAKE ON ITS WEIGHT."
+[00]
+[00]
+"X..WWWWWWWWWWW"
+"WW.WWWWWWWWWWW"
+"WW.....WWWWWWW"
+".3..P..T....FK"
+"....BWWW....W."
+".......TP...W."
+".WWWW.WWWWWWW."
+"..B...WWWW.W.."
+"WWWBW.WE2..FB."
+"WWWF..WWGWWWWW"
+.Level 19
+"GUARDS MARCH IN TIME,"
+[00]
+"LEFT, RIGHT, IN RHYME."
+[00]
+"WOOD CAN SET THE PACE,"
+[00]
+"SO BREAK THEIR CHIME."
+[00]
+[00]
+"X..W..PB....WW"
+"......B..B..WW"
+"W.WWW.WWW.WWWW"
+"W.WWW3..G.W..."
+"W3....WWWWW.W."
+"WWWWW3....W.W."
+"W.F...WWWWW.W."
+"W.W...TB......"
+"W.W...WWWWWWWW"
+"E.W....F.KWWWW"
+.Level 20
+"ONE CRATE OPENS ALL,"
+[00]
+"GUARDS ROAM THE HALL."
+[00]
+"WAIT TILL EACH IS IN,"
+[00]
+"LET THE GATES FALL."
+[00]
+[00]
+"WWWWWWG.WW...."
+"W..WWW..WW.B.."
+"W..WWW4..WW..."
+".........FF..."
+".W.WWWWW.WWWTW"
+".B.WWW.W.W..4."
+"W..W.W.W.W...."
+"WW.W.W.WPWW.K."
+"WWBWTWTWT.WWWW"
+"EF.X4.4...T2.."
+[00]->GDB2

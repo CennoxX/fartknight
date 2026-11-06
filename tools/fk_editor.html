@@ -1,0 +1,1450 @@
+<title>Fartknight Level Editor</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: calculator body around an LCD; levels left, LCD + palette centre, poem/checks right. Stacks on phones. */
+:root {
+  color-scheme: dark;
+  --body: #22252b;        /* calculator plastic */
+  --panel: #2c3038;
+  --panel-2: #353a44;
+  --line: #444a56;
+  --ink: #e6e8ec;
+  --muted: #9aa1ad;
+  --lcd-off: #a7b293;     /* LCD background */
+  --lcd-on: #1d2618;      /* LCD pixel */
+  --accent: #e7b84a;      /* 2nd-key yellow */
+  --accent-ink: #1f1a0c;
+  --alpha: #7cc48b;       /* ALPHA-key green, used for "ok" */
+  --warn: #e7b84a;
+  --bad: #e2735f;
+  --path: rgba(214, 72, 52, .85);
+  --font-display: "Silkscreen", "Courier New", monospace;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  --r: 6px;
+}
+html, body { background: var(--body); color: var(--ink); }
+body {
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 32px;
+}
+h1, h2 { font-family: var(--font-display); font-weight: 400; letter-spacing: .02em; margin: 0; text-wrap: balance; }
+h1 { font-size: 22px; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--r);
+  padding: 6px 10px; cursor: pointer; min-height: 34px;
+}
+button:hover { border-color: var(--muted); }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .lvl:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+button:disabled { opacity: .45; cursor: default; }
+
+.wrap { max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+header img { width: 96px; height: 64px; image-rendering: pixelated; border-radius: 4px; border: 2px solid #111; }
+header .sub { color: var(--muted); max-width: 60ch; }
+
+.app { display: grid; grid-template-columns: 220px minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+@media (max-width: 1050px) { .app { grid-template-columns: 200px minmax(0, 1fr); } .side-r { grid-column: 1 / -1; } }
+@media (max-width: 700px) { .app { grid-template-columns: minmax(0, 1fr); } }
+
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
+/* level list */
+.lvls { display: flex; flex-direction: column; gap: 6px; max-height: 560px; overflow-y: auto; }
+@media (max-width: 700px) { .lvls { flex-direction: row; overflow-x: auto; max-height: none; } }
+.lvl { flex: none; display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px; align-items: center; padding: 6px; border-radius: var(--r); border: 1px solid transparent; cursor: pointer; background: transparent; text-align: left; }
+.lvl:hover { background: var(--panel-2); border-color: transparent; }
+.lvl[aria-current="true"]:hover { border-color: var(--accent); }
+.lvl > span { min-width: 0; }
+.lvl[aria-current="true"] { border-color: var(--accent); background: var(--panel-2); }
+.lvl canvas { width: 64px; height: 48px; image-rendering: pixelated; border-radius: 2px; }
+.lvl .n { font-family: var(--font-display); font-size: 12px; }
+.lvl .p { display: block; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 700px) { .lvl { grid-template-columns: 64px; min-width: 76px; } .lvl .p { display: none; } }
+.row { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* LCD */
+.calc { background: #17191d; border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.lcd { position: relative; background: var(--lcd-off); border-radius: 4px; padding: 6px; box-shadow: inset 0 0 0 2px #0e100c, inset 0 3px 8px rgba(0,0,0,.35); }
+[hidden] { display: none !important; }
+#screen { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; image-rendering: pixelated; max-width: 100%; outline: none; }
+
+#grid { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; image-rendering: pixelated; touch-action: none; cursor: crosshair; max-width: 100%; }
+.lcd-meta { display: flex; justify-content: space-between; color: var(--muted); font-family: var(--font-mono); font-size: 12px; gap: 8px; flex-wrap: wrap; }
+
+.palette { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 6px; }
+.tool { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 4px; font-size: 11px; line-height: 1.2; }
+.tool canvas { width: 32px; height: 32px; image-rendering: pixelated; background: var(--lcd-off); border-radius: 2px; }
+.tool kbd { font-family: var(--font-mono); color: var(--muted); font-size: 10px; }
+.tool[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+
+/* poem */
+.poem { display: flex; flex-direction: column; gap: 6px; }
+.pl { display: grid; grid-template-columns: 1fr 42px; gap: 6px; align-items: center; }
+.pl input { background: #1b1e23; border: 1px solid var(--line); border-radius: var(--r); padding: 7px 8px; font-family: var(--font-mono); text-transform: uppercase; min-width: 0; }
+.pl .cnt { font-family: var(--font-mono); font-size: 12px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.pl .cnt.over { color: var(--bad); }
+
+/* checks */
+.checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.checks li { display: grid; grid-template-columns: 54px 1fr; gap: 8px; font-size: 13px; }
+.chip { font-family: var(--font-mono); font-size: 11px; border-radius: 4px; padding: 1px 0; text-align: center; height: fit-content; }
+.chip.ok { background: color-mix(in srgb, var(--alpha) 22%, transparent); color: var(--alpha); }
+.chip.warn { background: color-mix(in srgb, var(--warn) 22%, transparent); color: var(--warn); }
+.chip.bad { background: color-mix(in srgb, var(--bad) 22%, transparent); color: var(--bad); }
+.solve-out { font-family: var(--font-mono); font-size: 12px; white-space: pre-wrap; background: #1b1e23; border-radius: var(--r); padding: 8px; min-height: 3em; color: var(--muted); }
+label.inline { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+select { background: #1b1e23; border: 1px solid var(--line); border-radius: var(--r); padding: 5px; }
+
+/* io */
+.io textarea { width: 100%; min-height: 180px; background: #1b1e23; border: 1px solid var(--line); border-radius: var(--r); padding: 8px; font-family: var(--font-mono); font-size: 12px; resize: vertical; box-sizing: border-box; }
+.note { color: var(--muted); font-size: 12px; }
+.toast { min-height: 1.2em; font-size: 12px; color: var(--alpha); }
+@media (prefers-reduced-motion: no-preference) { button { transition: border-color .15s, background .15s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABACAYAAADlNHIOAAAAAXNSR0IB2cksfwAAAARnQU1BAACxjwv8YQUAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAZiS0dEAAAAAAAA+UO7fwAAAAlwSFlzAAASdAAAEnQB3mYfeAAAAAd0SU1FB+oKGBUXMwSocY4AAANBSURBVHic7VvZjusgDIWr/v8P94H7hJSheMULSTjSSNOErT54wbi1lNLKQRr+ZS9gF7TWpv9747UEzAQeKfiOz/XDbAG11rDFRKO19vP9LEngyPPz04IxyGygu8Jb4BRIAriTYjvJkyxofg2gMUbB9nYW33GZAA6gLzB7R72H3s3MCdV/9nns463pfwiYMTsDp12tFXxP7dpRABzVvraDxr0+pzYBNLYGWH+zKCg6gsDmo9bSWnNd72wD1Fqnz0kTxLWL3HEwp84dkzIrvQ3HJEnXyekrgek5QLtoaMdkAlqXNURhaLRQVh2k1sxQGmZpvkw0gEOMt929K1QEYLuQK2QLbXoCoWG5IK3AOQ7Xcj5OX0v/QBLQJ4OiA61psdq9u2iBdh0uGrCLUDS7NNpX/RCgie+5KmkVTUjG0azLGtj6HnMfAB28SpnbbE5OSGvrJRurluFKEkuOWd0XUNlFKE9D7fzMw9t1A0jk9IeAp+f+M0AlCKcn4SNwO5AhbXlhVcROmv4YJ8zFLiFyR8iN2I7Yxcy+kgDObVgUQa8xQbMTrsXl0CpeowG7mJwRr9GAESt3ypYI14CdTq87zB9GAFaikiUEKHXQfcAWd8IWWM1WWs6L5ZkyzgjuPoBbo2Ndo6kpCsvQxK2iIInar9QlXUnILE0vJUADvHYV96Kl/42Cx8aJJCM8GQfZZW2VM+cki80pqarzgKsJGoWqiYQ0YSvWhnOpE+kL3EyQ9DdXszacZxJTdO3fSadMkEeQcIV5bSgVfUCQlItrwlrotwSQ6btdLki646+YCV8iZK4WUMm4113IaEvBtSbBs1pOC1cnLD1daogY58PaaOqXvLXCTAM04RzmCKVzX8f4fr/TdY0OFSu5jIL5OQCq4+HYdI4QqDMDVXOEzZfhA0IPYpyCJS4Jkjmw/l0LoTOLNympJ2GOeZJUmWnJy8rWlpKQjJPU96+UQq7u5Chz9LjCLG0eJ8sfPO5O2EJwkc74cRpwN3y84l/NFd/Yx/uaUDL+6lpAn1aOBqQCjYKsHJPVDzsk86xc7HD6UrLhRl9HA5LxuCjobjgEJOMQkIxDQDIOAck4BCTjEJCMQ0AyDgHJOAQk4z/ATW2WNDiqegAAAABJRU5ErkJggg==" alt="Fartknight title screen">
+    <div>
+      <h1>Fartknight Level Editor</h1>
+      <div class="sub">Paint 16×12 maps for the TI-83+, write the poem, check that a level can be beaten, then copy the finished FKLVL source back to the calculator.</div>
+    </div>
+  </header>
+
+  <div class="app" id="editorView">
+    <section class="panel side-l" aria-label="Levels">
+      <h2>Levels</h2>
+      <div class="lvls" id="lvls"></div>
+      <div class="row">
+        <button id="btnNew">New</button>
+        <button id="btnDup">Duplicate</button>
+        <button id="btnUp" aria-label="Move level up">▲</button>
+        <button id="btnDown" aria-label="Move level down">▼</button>
+      </div>
+      <div class="row" style="align-items:center">
+        <select id="selShip" aria-label="Shipped level"></select>
+        <button id="btnShip">Load into this slot</button>
+      </div>
+      <div class="row">
+        <button id="btnDel">Delete…</button>
+        <button id="btnDelYes" class="primary" hidden>Yes, delete</button>
+        <button id="btnDelNo" hidden>Keep</button>
+      </div>
+    </section>
+
+    <section class="panel center" aria-label="Map">
+      <div class="calc">
+        <div class="lcd"><canvas id="grid" width="1024" height="768" aria-label="Level map, 16 by 12 tiles"></canvas><canvas id="screen" width="96" height="64" tabindex="0" aria-label="Game screen" hidden></canvas></div>
+        <div class="lcd-meta"><span id="hover">x –, y –</span><span id="counts"></span></div>
+      </div>
+      <div class="note" id="playNote" hidden>Playing: arrow keys move · Shift = 2ND · M = MODE (restart level, costs a life) · Esc = CLEAR (stop playing)</div>
+      <div class="palette" id="palette" role="toolbar" aria-label="Tiles"></div>
+      <div class="row">
+        <label class="inline"><input type="checkbox" id="optGrid" checked> Grid lines</label>
+        <label class="inline"><input type="checkbox" id="optSight" checked> Guard sight</label>
+        <button id="btnUndo" aria-label="Undo (Ctrl+Z)">Undo</button>
+        <button id="btnRedo" aria-label="Redo (Ctrl+Y)">Redo</button>
+        <button id="btnClear">Clear map…</button>
+        <button id="btnClearYes" class="primary" hidden>Yes, clear</button>
+        <button id="btnClearNo" hidden>Keep</button>
+      </div>
+      <div class="note">Click or drag to paint. Right-click paints floor. Start, key and exit move instead of duplicating. Keys: W . X K E G F B P T H and 1–4 for guards (down, left, right, up).</div>
+    </section>
+
+    <section class="side-r" style="display:flex;flex-direction:column;gap:16px;min-width:0">
+      <div class="panel">
+        <h2>Poem</h2>
+        <div class="note">Up to 5 lines, 22 characters each. Shown between levels. AABA, hint at the level, never explain it.</div>
+        <div class="poem" id="poem"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Checks</h2>
+        <ul class="checks" id="checks"></ul>
+        <div class="row"><button id="btnPlay" class="primary">Play level</button></div>
+        <div class="row" style="align-items:center">
+          <button class="primary" id="btnSolve">Test level</button>
+          <label class="inline">Search
+            <select id="optMode"><option value="full" selected>Shortest route</option><option value="fast">Any route (faster)</option></select>
+          </label>
+          <label class="inline">Player steps per guard step
+            <select id="optSteps"><option>1</option><option selected>2</option><option>3</option></select>
+          </label>
+          <label class="inline"><input type="checkbox" id="optGem" checked> Collect the gem on the way</label>
+          <label class="inline"><input type="checkbox" id="optGhost"> Guards ignore crates</label>
+        </div>
+        <div class="solve-out" id="solveOut" aria-live="polite">Test runs a full search with guard timing. The red trail shows the way out. If it runs out of room, try “Any route (faster)”.</div>
+      </div>
+
+      <div class="panel io">
+        <h2>FKLVL source</h2>
+        <div class="row">
+          <button class="primary" id="btnExport">Copy FKLVL.txt</button>
+          <button id="btnImport">Import from box</button>
+          <button id="btnReset">Restore shipped levels…</button>
+          <button id="btnResetYes" class="primary" hidden>Yes, restore</button>
+        </div>
+        <textarea id="io" spellcheck="false" aria-label="FKLVL source text"></textarea>
+        <div class="toast" id="toast" role="status"></div>
+        <div class="note">On the calculator: replace FKLVL, compile FKDATSRC, run FKDATA once. FKNIGHT reads the levels from the AppVar.</div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script id="shipped" type="text/plain">..FKLVL
+.Levels for FKNIGHT, included by FKDATA
+.Per level: poem lines each followed by [00], then [00],
+.then 10 rows of 14 tiles, the wall border is added automatically
+.W wall . floor X start K key E exit G gem
+.F trap B crate P plate T gate H lever
+.1-4 guard down/left/right/up
+
+[00]->GDB1
+.Level 1
+"SILENT, BUT GRAND,"
+[00]
+"THE KING TOOK A STAND,"
+[00]
+"SIR FARTALOT,"
+[00]
+"FLEE THE LAND!"
+[00]
+[00]
+"X.EW.........."
+"...W.WWWWWWWW."
+"...W.W........"
+".....W.WWWWWWW"
+"WWWWWW3......."
+"WWWW.........."
+"WWWW.........."
+"K.......2....."
+"WWWWWWWWWWW.WW"
+"WWWWWWWWWWW..G"
+.Level 2
+"GUARDS STARE AHEAD,"
+[00]
+"AS STIFF AS THE DEAD."
+[00]
+"WALK IN THEIR WAKE,"
+[00]
+"KEEP QUIET INSTEAD."
+[00]
+[00]
+"WWW.WWW.WWWWWW"
+"WWW.WWW.WWWKFG"
+".....3......WF"
+".WWWWWWWWWWWW."
+".WWWWWWWWWWWW."
+"...F...FEWWWW."
+".....F...WWWW."
+".WWWWWWWWWWWW."
+"...WWWWWWWW.B."
+"X............."
+.Level 3
+"SPIKES CHEW ON WOOD,"
+[00]
+"AS ALL SPIKES SHOULD."
+[00]
+"GUARDS SNIFF THE AIR,"
+[00]
+"WOOD STOPS THEM GOOD."
+[00]
+[00]
+"WWWWWWWWWWWWWW"
+".FGWWWWWWWWWWW"
+"..FWWWWWWWWWWW"
+"X..WWWWWWWWWWW"
+"...WWWWWWWW..."
+".....3........"
+"...WWWWWWWW..."
+"WW.....WWWW..K"
+"E.B..B.WWWWWWW"
+"WWF....WWWWWWW"
+.Level 4
+"A GATE OF STEEL"
+[00]
+"WITH NO APPEAL"
+[00]
+"LONGED FOR SOME WEIGHT"
+[00]
+"TO SEAL THE DEAL."
+[00]
+[00]
+"XWWP...WW.WKWG"
+"....W..WW.WFW."
+"...W...WW.W.W."
+"F......WW.W.W."
+".B.W..BWW.W.W."
+"W.WW.W.WW.W.W."
+"....W..W..W.W."
+"...W...T..F..."
+"...WW..W......"
+".....W.W..F..E"
+.Level 5
+"THE HALL STANDS WIDE,"
+[00]
+"GUARDS RACE INSIDE,"
+[00]
+"THEIR PATHS CROSS,"
+[00]
+"KEEP TO THE SIDE."
+[00]
+[00]
+"..X...3......K"
+".............."
+".............."
+".............."
+".............."
+"......21..4..."
+".............."
+".............."
+".............."
+"G.4.........2E"
+.Level 6
+"HIS CRATE, HIS SHIELD,"
+[00]
+"MADE GUARDS YIELD."
+[00]
+"THEY BLAMED THE DOG"
+[00]
+"AS THE GATE UNSEALED."
+[00]
+[00]
+"X....W........"
+".W...T.WWWWWW."
+".WWW.W..3G...K"
+"..B..WWWWWWWWW"
+"WWWW.WWWWWWWWW"
+"........P...2."
+".WWW.WWWWWWWWW"
+".....W.W.W.W.."
+".3..........2."
+".....W.W.W.W.E"
+.Level 7
+"A CRATE IN A CRACK"
+[00]
+"BLOCKS THE WAY BACK."
+[00]
+"HE THOUGHT IT THROUGH,"
+[00]
+"AND SOFTLY WENT QUACK."
+[00]
+[00]
+"X..W......1..."
+".B.T.WW4WW.WW."
+"...WWWWG.W.WWH"
+"W.WWWWWW.WWWWW"
+"...1WWWW.WW.EW"
+"W...WWWW.WWKWW"
+"....WWWW...3.."
+".W..WWWW.BWWWW"
+"....P.FW..WWWW"
+"WWWWW.T...WWWW"
+.Level 8
+"THE PLATE IS NEAR,"
+[00]
+"THE PATH NOT CLEAR."
+[00]
+"A WOODEN FRIEND"
+[00]
+"HIDES MORE THAN FEAR."
+[00]
+[00]
+"WWWWWP....BXWW"
+"WWWWFBW.BB.W.W"
+"WWWW..W..B.W.W"
+"W.FEW..WWWWW.K"
+"W..W...WWWWW.W"
+"GW.W..WWWWWW4W"
+"....W.WWW..W.W"
+".......WW.BW.W"
+"..W....T...B.W"
+"..B.W.WW.....W"
+.Level 9
+"THE LEVER SAT TIGHT,"
+[00]
+"AT THE END, IN SIGHT."
+[00]
+"A GUARD IN A BOX"
+[00]
+"CANNOT SNIFF OR FIGHT."
+[00]
+[00]
+"X..W3........."
+"...T...W...W.."
+"...W...W...W.K"
+"W.WWWWWWWWWWWW"
+"........WWWWWW"
+"...WWWB.WWWWWW"
+"...WWG....3..H"
+"...WWWWWWWWWWW"
+"W.WWWEWWWWWWWW"
+"W.3......WWWWW"
+.Level 10
+"SPIKES IN THE FLOOR,"
+[00]
+"A DRAFT FROM THE DOOR."
+[00]
+"HE NUDGED SOME WOOD,"
+[00]
+"SPIKES BIT NO MORE."
+[00]
+[00]
+"X...WW.....BFG"
+"..BBW.......BW"
+"....F........."
+"E...WW........"
+"WWWWWWWWWWW.WW"
+"...F...WWWW..W"
+"...W.1.WWW...W"
+"...W...W...W.."
+".K.W...F......"
+"...W...W......"
+.Level 11
+"A CRATE BY THE GATE,"
+[00]
+"THE HOUR GROWS LATE,"
+[00]
+"THE KEEP STANDS TALL,"
+[00]
+"DECIDE YOUR FATE."
+[00]
+[00]
+".2..........XW"
+".W.W.W.W.W.W.W"
+"3............W"
+"WWWWWTBWWWWWWW"
+"K.....P2G.WWWW"
+"WWWWWW.WWWWWWW"
+"WWWWWWFWWWWWWW"
+".W.W.W.W.W.W.."
+".3............"
+".W.W.W.W.W.W.E"
+.Level 12
+"FOUR CRATES CLOSE IN,"
+[00]
+"NO ROOM TO SPIN."
+[00]
+"TAKE ONE FOR A WALK,"
+[00]
+"THERE AND BACK AGAIN."
+[00]
+[00]
+"WWWWK....WWWWW"
+"G.WWWW3.F..WWW"
+"..WWWWWWTWWWWW"
+"..1..W3....WWW"
+".W.W.W.WBW.WWW"
+".......BXB.WWW"
+".W.W.W.WBW.WWW"
+".....WP....WWW"
+"WWWWWWWWWWFWWW"
+"WWWWE........2"
+.Level 13
+"FILL PITS, STAND TALL,"
+[00]
+"CRATES CROSS THE HALL."
+[00]
+"SPEED UP"
+[00]
+"WHILE BY THE WALL."
+[00]
+[00]
+".....WWW..WWWW"
+".BWW.WW..B.WWW"
+".XWF.F.W.....W"
+".B...W..B..FWW"
+".....W....WPWW"
+"WWWWWWWWWWWTWW"
+"WWG....WW....."
+"WW.B.WF......."
+"WW1.WWW.B....F"
+"WE.WWWWW.WW.WK"
+.Level 14
+"A LEVER STOOD,"
+[00]
+"AS LEVERS SHOULD."
+[00]
+"BUT WHAT IT FREES"
+[00]
+"MIGHT NOT SMELL GOOD."
+[00]
+[00]
+"X...TGWW1WWWWW"
+"....HWWW.WWWWW"
+".WWWWWWW.WWWWW"
+".PWWWWWWTWWWWW"
+".........F...K"
+"WBWWWW.W.WWWWW"
+"W.WWWW.W.WWWWW"
+"W.WWWW.W.WWWWW"
+"W.WWWWBW4....E"
+"W........WWWWW"
+.Level 15
+"GUARDS STALK THE HALL,"
+[00]
+"HE TIPTOES, SMALL."
+[00]
+"PFFT! JUST THE DRAFT."
+[00]
+"SNIFF NOT. WALK TALL."
+[00]
+[00]
+"...W.........."
+"1.....2.....BF"
+"...W........1."
+"...W...W.WW..."
+"...WG..WBWWW.W"
+".WWWWWWWKW...."
+"...FWWWW.W...."
+"..W.BFWW.F...."
+".W.BXBWWWW..B."
+"FEW.B..WWW...."
+.Level 16
+"SPIKES WERE HIS PEN,"
+[00]
+"FILL THEM, AND THEN!"
+[00]
+"A CRATE MAKES A FENCE"
+[00]
+"AND DOWNSTAIRS AGAIN."
+[00]
+[00]
+"X.......WWWWWW"
+"....BBB.WWWWWW"
+"WWWW.W.WWWWWWW"
+"WWWW.W.WWWWWWW"
+"G3..F........K"
+"WWWW.WWWWWWWWW"
+"WET..WWWWW...W"
+"WWW..........W"
+"WWWWWWWWWW...W"
+"WWWWWWH.2F...W"
+.Level 17
+"THE GATE SWINGS WIDE,"
+[00]
+"HE STROLLS OUTSIDE."
+[00]
+"A WEDGE IN TIME"
+[00]
+"KEEPS HIM ON HIS SIDE."
+[00]
+[00]
+"WWWWWWKWW.W.WG"
+"WWWWWW.W.....2"
+"WWWWWW1WW.WWWE"
+"WWWWWWTWW...WW"
+"W....PT.....WW"
+"W..WWW.WW...WW"
+"WWFWWWP.....WW"
+".....W.WWWWWF."
+".BB..WW.B.B..."
+"..W...F....X.."
+.Level 18
+"A CRATE ON THE PLATE"
+[00]
+"MAY TIRE OF ITS WAIT."
+[00]
+"FETCH IT A FRIEND"
+[00]
+"TO TAKE ON ITS WEIGHT."
+[00]
+[00]
+"X..WWWWWWWWWWW"
+"WW.WWWWWWWWWWW"
+"WW.....WWWWWWW"
+".3..P..T....FK"
+"....BWWW....W."
+".......TP...W."
+".WWWW.WWWWWWW."
+"..B...WWWW.W.."
+"WWWBW.WE2..FB."
+"WWWF..WWGWWWWW"
+.Level 19
+"GUARDS MARCH IN TIME,"
+[00]
+"LEFT, RIGHT, IN RHYME."
+[00]
+"WOOD CAN SET THE PACE,"
+[00]
+"SO BREAK THEIR CHIME."
+[00]
+[00]
+"X..W..PB....WW"
+"......B..B..WW"
+"W.WWW.WWW.WWWW"
+"W.WWW3..G.W..."
+"W3....WWWWW.W."
+"WWWWW3....W.W."
+"W.F...WWWWW.W."
+"W.W...TB......"
+"W.W...WWWWWWWW"
+"E.W....F.KWWWW"
+.Level 20
+"ONE CRATE OPENS ALL,"
+[00]
+"GUARDS ROAM THE HALL."
+[00]
+"WAIT TILL EACH IS IN,"
+[00]
+"LET THE GATES FALL."
+[00]
+[00]
+"WWWWWWG.WW...."
+"W..WWW..WW.B.."
+"W..WWW4..WW..."
+".........FF..."
+".W.WWWWW.WWWTW"
+".B.WWW.W.W..4."
+"W..W.W.W.W...."
+"WW.W.W.WPWW.K."
+"WWBWTWTWT.WWWW"
+"EF.X4.4...T2.."
+[00]->GDB2
+</script>
+
+<script id="solverSrc" type="text/plain">
+// ---- solver, same rules as FK_levelcheck.py ----
+const DIRS = {1:[0,1],2:[-1,0],3:[1,0],4:[0,-1]};
+function solve(rows, goal, STEPS, GHOST, LIMIT, NEEDGEM, FAST) {
+  const W = 16, H = 12;
+  const base = []; const guards0 = []; let start, keyP, exitP;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    let c = rows[y][x]; const p = y * W + x;
+    if (c === 'X') { start = p; c = '.'; }
+    else if ('1234'.includes(c)) { guards0.push([x, y, +c]); c = '.'; }
+    else if (c === 'K') keyP = p; else if (c === 'E') exitP = p;
+    base[p] = c;
+  }
+  const boxes0 = [], traps0 = [], gemSet = new Set();
+  base.forEach((c, p) => { if (c === 'B') boxes0.push(p); if (c === 'F') traps0.push(p); if (c === 'G') gemSet.add(p); });
+  if (!gemSet.size) NEEDGEM = false;
+  const tile = (x, y, boxes, traps, hasKey) => {
+    if (x < 0 || y < 0 || x >= W || y >= H) return 'W';
+    const p = y * W + x, c = base[p];
+    if (boxes.includes(p)) return c === 'P' ? 'Q' : c === 'T' ? 'R' : 'B';
+    if (c === 'B') return '.';
+    if (c === 'F' && !traps.includes(p)) return '.';
+    if (c === 'K' && hasKey) return '.';
+    return c;
+  };
+  const isOpen = (boxes, lever) => lever || boxes.some(b => base[b] === 'P');
+  const seen = (px, py, guards, boxes, traps, hk, opened) => {
+    const bx = GHOST ? [] : boxes;
+    const block = 'WEBHQR' + (opened ? '' : 'T');
+    for (const [gx, gy, gd] of guards) {
+      let x = gx, y = gy;
+      for (let i = 0; i < 4; i++) {
+        if (x === px && y === py) return true;
+        x += DIRS[gd][0]; y += DIRS[gd][1];
+        if (block.includes(tile(x, y, bx, traps, hk))) break;
+      }
+    }
+    return false;
+  };
+  const gstep = (guards, boxes, traps, hk, opened) => {
+    const bx = GHOST ? [] : boxes;
+    const free = '.KGP' + (opened ? 'T' : '');
+    return guards.map(([gx, gy, gd]) => {
+      const x = gx + DIRS[gd][0], y = gy + DIRS[gd][1];
+      return free.includes(tile(x, y, bx, traps, hk)) ? [x, y, gd] : [gx, gy, 5 - gd];
+    });
+  };
+  const keyOf = s => s.p + '|' + s.b.join(',') + '|' + s.t.join(',') + '|' + (s.k ? 1 : 0) + (s.l ? 1 : 0) + (s.m ? 1 : 0) + '|' + s.g.map(g => g.join('.')).join(',') + '|' + s.s;
+  const S0 = { p: start, b: boxes0, t: traps0, k: false, l: 0, m: false, g: guards0, s: 0, par: -1, d: 0 };
+  const states = [S0]; const visited = new Set([keyOf(S0)]);
+  let head = 0;
+  // FAST: greedy best-first search toward the next target (gem, key, exit); finds a route, not always the shortest
+  const dist = (a, b) => Math.abs(a % W - b % W) + Math.abs(((a / W) | 0) - ((b / W) | 0));
+  const gems = [...gemSet];
+  const prio = s => {
+    let h;
+    if (goal != null) h = dist(s.p, goal);
+    else if (NEEDGEM && !s.m) h = 200 + Math.min(...gems.map(g => dist(s.p, g)));
+    else if (!s.k && keyP != null) h = 100 + dist(s.p, keyP);
+    else h = dist(s.p, exitP);
+    return h * 4 + s.d;
+  };
+  const heap = [], hp = [];
+  const push = (i, pr) => {
+    let n = heap.length; heap.push(i); hp.push(pr);
+    while (n > 0) { const u = (n - 1) >> 1; if (hp[u] <= pr) break; heap[n] = heap[u]; hp[n] = hp[u]; n = u; }
+    heap[n] = i; hp[n] = pr;
+  };
+  const pop = () => {
+    const top = heap[0], li = heap.pop(), lp = hp.pop();
+    if (heap.length) {
+      let n = 0;
+      for (;;) {
+        let c = 2 * n + 1; if (c >= heap.length) break;
+        if (c + 1 < heap.length && hp[c + 1] < hp[c]) c++;
+        if (hp[c] >= lp) break;
+        heap[n] = heap[c]; hp[n] = hp[c]; n = c;
+      }
+      heap[n] = li; hp[n] = lp;
+    }
+    return top;
+  };
+  if (FAST) push(0, prio(S0));
+  const finish = (s) => {
+    const path = []; let cur = s;
+    while (cur) { if (!path.length || path[path.length - 1] !== cur.p) path.push(cur.p); cur = cur.par >= 0 ? states[cur.par] : null; }
+    path.reverse();
+    return { ok: true, moves: path.length - 1, path, explored: states.length };
+  };
+  while (FAST ? heap.length : head < states.length) {
+    if (states.length > LIMIT) return { ok: false, limit: true, explored: states.length };
+    const si = FAST ? pop() : head++; const s = states[si];
+    const px = s.p % W, py = (s.p / W) | 0;
+    const opened = isOpen(s.b, s.l);
+    const nexts = [];
+    const g2 = gstep(s.g, s.b, s.t, s.k, opened);
+    if (!seen(px, py, g2, s.b, s.t, s.k, opened)) nexts.push({ p: s.p, b: s.b, t: s.t, k: s.k, l: s.l, m: s.m, g: g2, s: 0, d: s.d + 1 });
+    if (s.s < STEPS) {
+      for (const d of [1, 2, 3, 4]) {
+        const [dx, dy] = DIRS[d]; const tx = px + dx, ty = py + dy;
+        const c = tile(tx, ty, s.b, s.t, s.k);
+        let nb = s.b, nt = s.t, nk = s.k, nl = s.l, np = ty * W + tx;
+        if (c === 'W') continue;
+        if (c === 'H') { nl = s.l ? 0 : 1; np = s.p; }
+        else if (c === 'T' && !opened) continue;
+        else if (c === 'E') { if (s.k && goal == null && (s.m || !NEEDGEM)) { const end = { p: np, par: si }; states.push(end); return finish(end); } continue; }
+        else if (c === 'F') continue;
+        else if ('BQR'.includes(c)) {
+          const ux = tx + dx, uy = ty + dy; const c2 = tile(ux, uy, s.b, s.t, s.k);
+          if (!('.PF' + (opened ? 'T' : '')).includes(c2)) continue;
+          if (s.g.some(([gx, gy]) => gx === ux && gy === uy)) continue;
+          const up = uy * W + ux;
+          nb = s.b.filter(b => b !== np);
+          if (c2 === 'F') nt = s.t.filter(t => t !== up); else { nb = nb.concat(up).sort((a, b) => a - b); }
+        } else if (c === 'K') nk = true;
+        const ns = { p: np, b: nb, t: nt, k: nk, l: nl, m: NEEDGEM && (s.m || gemSet.has(np)), g: s.g, s: s.s + 1, d: s.d + 1 };
+        if (goal != null && np === goal) { ns.par = si; states.push(ns); return finish(ns); }
+        if (!seen(np % W, (np / W) | 0, s.g, nb, nt, nk, isOpen(nb, nl))) nexts.push(ns);
+      }
+    }
+    for (const ns of nexts) {
+      const k = keyOf(ns);
+      if (!visited.has(k)) { visited.add(k); ns.par = si; states.push(ns); if (FAST) push(states.length - 1, prio(ns)); }
+    }
+  }
+  return { ok: false, explored: states.length };
+}
+self.onmessage = (e) => {
+  const { rows, steps, ghost, needGem, fast } = e.data; const LIMIT = 6000000;
+  const W = 16; const gems = [];
+  rows.forEach((r, y) => [...r].forEach((c, x) => { if (c === 'G') gems.push(y * W + x); }));
+  const main = solve(rows, null, steps, ghost, LIMIT, needGem, fast);
+  self.postMessage({ kind: 'main', res: main });
+  for (const g of gems) self.postMessage({ kind: 'gem', gem: g, res: solve(rows, g, steps, ghost, LIMIT, false, fast) });
+  self.postMessage({ kind: 'done' });
+};
+</script>
+
+<script>
+(() => {
+  // ---- sprites from FKSRC (8x8, hex rows) ----
+  const TILE_HEX = ['0000000000000000','FF888888FF222222','0060909F9A600000','7E4242424A42427E','00183C7E7E3C1800','00004949DBDBFF00','FFC3A59999A5C3FF','00007E42427E0000','FF555555555555FF','000040201008183C'];
+  const PLAYER_HEX = '7C547C7464FE386C';
+  const GUARD_HEX = '3C7E5A7E3C7EBD24';
+  const TILE_OF = { '.': 0, W: 1, K: 2, E: 3, G: 4, F: 5, B: 6, P: 7, T: 8, H: 9 };
+  const TOOLS = [
+    ['W', 'Wall'], ['.', 'Floor'], ['X', 'Start'], ['K', 'Key'], ['E', 'Exit'], ['G', 'Gem'],
+    ['F', 'Trap'], ['B', 'Crate'], ['P', 'Plate'], ['T', 'Gate'], ['H', 'Lever'],
+    ['1', 'Guard ↓'], ['2', 'Guard ←'], ['3', 'Guard →'], ['4', 'Guard ↑']
+  ];
+  const UNIQUE = 'XKE';
+  const W = 16, H = 12, S = 64; // 8px sprite * 8 scale
+  const css = getComputedStyle(document.documentElement);
+  const LCD_ON = css.getPropertyValue('--lcd-on').trim() || '#1d2618';
+  const LCD_OFF = css.getPropertyValue('--lcd-off').trim() || '#a7b293';
+  const ACCENT = css.getPropertyValue('--accent').trim() || '#e7b84a';
+  const PATH = css.getPropertyValue('--path').trim() || 'rgba(214,72,52,.85)';
+
+  const hexBits = h => { const rows = []; for (let i = 0; i < 16; i += 2) rows.push(parseInt(h.slice(i, i + 2), 16)); return rows; };
+  const SPR = { tiles: TILE_HEX.map(hexBits), player: hexBits(PLAYER_HEX), guard: hexBits(GUARD_HEX) };
+  const sprFor = c => c === 'X' ? SPR.player : '1234'.includes(c) ? SPR.guard : SPR.tiles[TILE_OF[c] ?? 0];
+
+  function drawSprite(ctx, bits, ox, oy, px) {
+    ctx.fillStyle = LCD_OFF; ctx.fillRect(ox, oy, px * 8, px * 8);
+    ctx.fillStyle = LCD_ON;
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) if (bits[y] & (128 >> x)) ctx.fillRect(ox + x * px, oy + y * px, px, px);
+  }
+
+  // ---- parse / build FKLVL text ----
+  function parseFKLVL(text) {
+    const lines = text.split(/\r?\n/);
+    let i = lines.findIndex(l => /->\s*GDB1/.test(l));
+    if (i < 0) throw new Error('No "[00]->GDB1" line found. Paste the whole FKLVL.txt.');
+    const toks = [];
+    for (let j = i + 1; j < lines.length; j++) {
+      const l = lines[j].trim();
+      if (!l || (l.startsWith('.') )) continue;
+      let m;
+      if ((m = l.match(/^"(.*)"$/))) toks.push({ s: m[1] });
+      else if (/^\[00\]/.test(l)) toks.push({ z: true });
+      else throw new Error('Line ' + (j + 1) + ' is not a string or [00]: ' + l);
+    }
+    const levels = []; let k = 0;
+    const next = () => { if (k >= toks.length) throw new Error('File ends inside a level.'); return toks[k++]; };
+    while (k < toks.length) {
+      let t = next();
+      if (t.z) break; // empty poem = end of list
+      const poem = [];
+      while (t.s !== undefined) { poem.push(t.s); const z = next(); if (!z.z) throw new Error('Poem line "' + t.s + '" must be followed by [00].'); t = next(); }
+      const map = [];
+      const first = toks[k] || {}, w = first.s !== undefined && first.s.length === 16 ? 16 : 14, h = w === 16 ? 12 : 10;
+      for (let r = 0; r < h; r++) { const s = next(); if (s.s === undefined || s.s.length !== w) throw new Error('Level ' + (levels.length + 1) + ': map row ' + (r + 1) + ' must be 14 characters.'); map.push(s.s.toUpperCase()); }
+      levels.push({ poem, map: w === 16 ? fixBorder(map) : walled(map) });
+    }
+    if (!levels.length) throw new Error('No levels found.');
+    return levels;
+  }
+  // inner 14x10 rows -> 16x12 map with wall border
+  function onBorder(x, y) { return x === 0 || y === 0 || x === 15 || y === 11; }
+  function walled(inner) { const w = 'W'.repeat(16); return [w, ...inner.map(r => 'W' + r + 'W'), w]; }
+  function fixBorder(map) {
+    const m = map.map(r => [...r]);
+    for (let y = 0; y < 12; y++) for (let x = 0; x < 16; x++) if (onBorder(x, y) && m[y][x] !== 'W') {
+      const ix = Math.min(14, Math.max(1, x)), iy = Math.min(10, Math.max(1, y));
+      if (m[iy][ix] === '.') m[iy][ix] = m[y][x];
+      m[y][x] = 'W';
+    }
+    return m.map(r => r.join(''));
+  }
+  function buildFKLVL(levels) {
+    const out = ['..FKLVL',
+      '.Levels for FKNIGHT, included by FKDATA',
+      '.Per level: poem lines each followed by [00], then [00],',
+      '.then 10 rows of 14 tiles, the wall border is added automatically',
+      '.W wall . floor X start K key E exit G gem',
+      '.F trap B crate P plate T gate H lever',
+      '.1-4 guard down/left/right/up',
+      '',
+      '[00]->GDB1'];
+    levels.forEach((lv, i) => {
+      out.push('.Level ' + (i + 1));
+      lv.poem.filter(l => l.trim()).forEach(l => out.push('"' + l.toUpperCase().replace(/"/g, "'") + '"', '[00]'));
+      out.push('[00]');
+      lv.map.slice(1, 11).forEach(r => out.push('"' + r.slice(1, 15) + '"'));
+    });
+    out.push('[00]->GDB2', '');
+    return out.join('\n');
+  }
+
+  // ---- state ----
+  let SHIPPED;
+  try { SHIPPED = parseFKLVL(document.getElementById('shipped').textContent); } catch (e) { SHIPPED = [{ poem: ['NEW LEVEL'], map: blankMap() }]; }
+  const STORE = 'fk-editor-levels-v1';
+  let levels = SHIPPED.map(l => ({ poem: [...l.poem], map: [...l.map] }));
+  try { const saved = JSON.parse(localStorage.getItem(STORE) || 'null'); if (Array.isArray(saved) && saved.length) levels = saved.map(l => ({ poem: l.poem, map: fixBorder(l.map) })); } catch (e) { }
+  let cur = 0, tool = 'W', solvePath = null;
+  function save() { try { localStorage.setItem(STORE, JSON.stringify(levels)); } catch (e) { } }
+  // undo history: snapshots of all levels + selected index
+  const undoStack = [], redoStack = [];
+  function snapshot() { return JSON.stringify({ levels, cur }); }
+  function remember() { undoStack.push(snapshot()); if (undoStack.length > 100) undoStack.shift(); redoStack.length = 0; updUndo(); }
+  function restoreSnap(js) { const o = JSON.parse(js); levels = o.levels; save(); select(Math.min(o.cur, levels.length - 1)); }
+  function undo() { if (!undoStack.length) return; redoStack.push(snapshot()); restoreSnap(undoStack.pop()); updUndo(); }
+  function redo() { if (!redoStack.length) return; undoStack.push(snapshot()); restoreSnap(redoStack.pop()); updUndo(); }
+  function updUndo() { const u = document.getElementById('btnUndo'), r = document.getElementById('btnRedo'); if (u) u.disabled = !undoStack.length; if (r) r.disabled = !redoStack.length; }
+  function blankMap() { const m = []; for (let y = 0; y < 12; y++) m.push(y === 0 || y === 11 ? 'W'.repeat(16) : 'W' + '.'.repeat(14) + 'W'); return m; }
+
+  // ---- elements ----
+  const $ = id => document.getElementById(id);
+  const grid = $('grid'), gctx = grid.getContext('2d');
+
+  // ---- map rendering ----
+  function setCell(x, y, c) { const r = levels[cur].map[y]; levels[cur].map[y] = r.slice(0, x) + c + r.slice(x + 1); }
+  function getCell(x, y) { return levels[cur].map[y][x]; }
+
+  function sightTiles(map) {
+    // guard sight from the starting position, same blockers as the game (closed gates)
+    const dirs = { 1: [0, 1], 2: [-1, 0], 3: [1, 0], 4: [0, -1] }; const out = [];
+    for (let y = 0; y < 12; y++) for (let x = 0; x < 16; x++) {
+      const c = map[y][x]; if (!'1234'.includes(c)) continue;
+      let gx = x, gy = y;
+      for (let i = 0; i < 3; i++) {
+        gx += dirs[c][0]; gy += dirs[c][1];
+        if (gx < 0 || gy < 0 || gx > 15 || gy > 11) break;
+        const t = map[gy][gx]; if ('WEBTH'.includes(t)) break;
+        out.push([gx, gy]);
+      }
+    }
+    return out;
+  }
+  function drawArrow(ctx, x, y, d) {
+    const cx = x * S + S / 2, cy = y * S + S / 2, r = S * 0.42;
+    const v = { 1: [0, 1], 2: [-1, 0], 3: [1, 0], 4: [0, -1] }[d];
+    const tx = cx + v[0] * r, ty = cy + v[1] * r; const px = -v[1], py = v[0];
+    ctx.fillStyle = ACCENT; ctx.strokeStyle = '#111'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx - v[0] * 16 + px * 11, ty - v[1] * 16 + py * 11); ctx.lineTo(tx - v[0] * 16 - px * 11, ty - v[1] * 16 - py * 11); ctx.closePath(); ctx.stroke(); ctx.fill();
+  }
+  function render() {
+    const map = levels[cur].map;
+    for (let y = 0; y < 12; y++) for (let x = 0; x < 16; x++) drawSprite(gctx, sprFor(map[y][x]), x * S, y * S, 8);
+    if ($('optSight').checked) {
+      gctx.fillStyle = LCD_ON;
+      for (const [x, y] of sightTiles(map)) { for (const [a, b] of [[2, 2], [5, 2], [2, 5], [5, 5]]) gctx.fillRect(x * S + a * 8, y * S + b * 8, 8, 8); }
+    }
+    for (let y = 0; y < 12; y++) for (let x = 0; x < 16; x++) { const c = map[y][x]; if ('1234'.includes(c)) drawArrow(gctx, x, y, +c); }
+    if ($('optGrid').checked) {
+      gctx.strokeStyle = 'rgba(29,38,24,.22)'; gctx.lineWidth = 2; gctx.beginPath();
+      for (let x = 1; x < 16; x++) { gctx.moveTo(x * S, 0); gctx.lineTo(x * S, 12 * S); }
+      for (let y = 1; y < 12; y++) { gctx.moveTo(0, y * S); gctx.lineTo(16 * S, y * S); }
+      gctx.stroke();
+    }
+    if (solvePath) {
+      gctx.fillStyle = PATH; gctx.strokeStyle = PATH; gctx.lineWidth = 6; gctx.beginPath();
+      solvePath.forEach((p, i) => { const x = (p % 16) * S + S / 2, y = ((p / 16) | 0) * S + S / 2; if (i) gctx.lineTo(x, y); else gctx.moveTo(x, y); });
+      gctx.stroke();
+      solvePath.forEach(p => { gctx.beginPath(); gctx.arc((p % 16) * S + S / 2, ((p / 16) | 0) * S + S / 2, 7, 0, 7); gctx.fill(); });
+    }
+    renderThumb(cur);
+    renderChecks();
+  }
+
+  // ---- level list ----
+  function renderThumb(i) {
+    const c = document.querySelector(`.lvl[data-i="${i}"] canvas`); if (!c) return;
+    const ctx = c.getContext('2d'); const map = levels[i].map;
+    for (let y = 0; y < 12; y++) for (let x = 0; x < 16; x++) drawSprite(ctx, sprFor(map[y][x]), x * 8, y * 8, 1);
+  }
+  function renderList() {
+    const box = $('lvls'); box.innerHTML = '';
+    levels.forEach((lv, i) => {
+      const b = document.createElement('button');
+      b.className = 'lvl'; b.dataset.i = i; b.setAttribute('aria-current', i === cur ? 'true' : 'false');
+      b.innerHTML = `<canvas width="128" height="96"></canvas><span><span class="n">Level ${i + 1}</span><span class="p"></span></span>`;
+      b.querySelector('.p').textContent = lv.poem[0] || '(no poem)';
+      b.onclick = () => select(i);
+      box.appendChild(b); renderThumb(i);
+    });
+    $('btnUp').disabled = cur === 0; $('btnDown').disabled = cur === levels.length - 1; $('btnDel').disabled = levels.length < 2;
+  }
+  function select(i) {
+    if (typeof G !== 'undefined' && G) stopGame();
+    if (typeof stopTest === 'function') stopTest();
+    cur = i; solvePath = null; hideDel(); renderList(); renderPoem(); render();
+    $('solveOut').textContent = 'Not tested yet.'; const sel = document.getElementById('selShip'); if (sel && i < sel.options.length) sel.value = i; }
+
+  // ---- palette ----
+  function renderPalette() {
+    const box = $('palette');
+    TOOLS.forEach(([c, name]) => {
+      const b = document.createElement('button'); b.className = 'tool'; b.dataset.c = c;
+      b.innerHTML = `<canvas width="64" height="64"></canvas><span>${name}</span><kbd>${c === '.' ? '.' : c}</kbd>`;
+      const ctx = b.querySelector('canvas').getContext('2d'); drawSprite(ctx, sprFor(c), 0, 0, 8);
+      if ('1234'.includes(c)) { ctx.save(); ctx.scale(1, 1); const d = +c; const v = { 1: [0, 1], 2: [-1, 0], 3: [1, 0], 4: [0, -1] }[d]; ctx.fillStyle = ACCENT; ctx.beginPath(); const cx = 32 + v[0] * 26, cy = 32 + v[1] * 26, px = -v[1], py = v[0]; ctx.moveTo(cx, cy); ctx.lineTo(cx - v[0] * 14 + px * 10, cy - v[1] * 14 + py * 10); ctx.lineTo(cx - v[0] * 14 - px * 10, cy - v[1] * 14 - py * 10); ctx.fill(); ctx.restore(); }
+      b.onclick = () => setTool(c);
+      box.appendChild(b);
+    });
+    setTool('W');
+  }
+  function setTool(c) { tool = c; document.querySelectorAll('.tool').forEach(b => b.setAttribute('aria-pressed', b.dataset.c === c ? 'true' : 'false')); }
+
+  // ---- painting ----
+  let painting = null;
+  function cellAt(ev) {
+    const r = grid.getBoundingClientRect();
+    const x = Math.floor((ev.clientX - r.left) / r.width * 16), y = Math.floor((ev.clientY - r.top) / r.height * 12);
+    return x >= 0 && y >= 0 && x < 16 && y < 12 ? [x, y] : null;
+  }
+  function paint(x, y, c) {
+    if (onBorder(x, y) || getCell(x, y) === c) return;
+    if (UNIQUE.includes(c)) levels[cur].map.forEach((row, yy) => { [...row].forEach((ch, xx) => { if (ch === c) setCell(xx, yy, '.'); }); });
+    setCell(x, y, c); solvePath = null; save(); render();
+  }
+  grid.addEventListener('contextmenu', e => e.preventDefault());
+  grid.addEventListener('pointerdown', e => {
+    const p = cellAt(e); if (!p) return;
+    painting = e.button === 2 ? '.' : tool; grid.setPointerCapture(e.pointerId);
+    if (!onBorder(p[0], p[1]) && getCell(p[0], p[1]) !== painting) remember();
+    paint(p[0], p[1], painting);
+  });
+  grid.addEventListener('pointermove', e => {
+    const p = cellAt(e); $('hover').textContent = p ? `x ${p[0]}, y ${p[1]}` : 'x –, y –';
+    if (painting && p && !UNIQUE.includes(painting)) paint(p[0], p[1], painting);
+  });
+  ['pointerup', 'pointercancel'].forEach(t => grid.addEventListener(t, () => { painting = null; }));
+  document.addEventListener('keydown', e => {
+    if (e.target.matches('input, textarea, select')) return;
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.key.toUpperCase();
+    const t = TOOLS.find(([c]) => c === k); if (t) { setTool(t[0]); e.preventDefault(); }
+  });
+  $('optGrid').onchange = render; $('optSight').onchange = render;
+  $('btnUndo').onclick = undo; $('btnRedo').onclick = redo;
+  const clearUi = on => { $('btnClear').hidden = on; $('btnClearYes').hidden = !on; $('btnClearNo').hidden = !on; };
+  $('btnClear').onclick = () => clearUi(true);
+  $('btnClearNo').onclick = () => clearUi(false);
+  $('btnClearYes').onclick = () => { remember(); levels[cur].map = blankMap(); solvePath = null; save(); clearUi(false); render(); toast('Map cleared. Undo brings it back.'); };
+
+  // ---- poem ----
+  function renderPoem() {
+    const box = $('poem'); box.innerHTML = '';
+    for (let i = 0; i < 5; i++) {
+      const row = document.createElement('div'); row.className = 'pl';
+      const inp = document.createElement('input'); inp.id = 'poem' + i; inp.maxLength = 30; inp.placeholder = i < 4 ? `Line ${i + 1}` : 'Line 5 (optional)';
+      inp.value = levels[cur].poem[i] || ''; inp.setAttribute('aria-label', 'Poem line ' + (i + 1));
+      const cnt = document.createElement('span'); cnt.className = 'cnt';
+      const upd = () => { cnt.textContent = inp.value.length + '/22'; cnt.classList.toggle('over', inp.value.length > 22); };
+      inp.onfocus = () => { inp.dataset.remembered = ''; };
+      inp.oninput = () => {
+        if (!inp.dataset.remembered) { remember(); inp.dataset.remembered = '1'; }
+        inp.value = inp.value.toUpperCase().replace(/"/g, '');
+        const p = []; for (let j = 0; j < 5; j++) p.push($('poem' + j)?.value ?? '');
+        while (p.length && !p[p.length - 1].trim()) p.pop();
+        levels[cur].poem = p; save(); upd(); renderChecks();
+        const lbl = document.querySelector(`.lvl[data-i="${cur}"] .p`); if (lbl) lbl.textContent = p[0] || '(no poem)';
+      };
+      upd(); row.append(inp, cnt); box.appendChild(row);
+    }
+  }
+
+  // ---- checks ----
+  function renderChecks() {
+    const lv = levels[cur], map = lv.map; const n = {};
+    map.join('').split('').forEach(c => n[c] = (n[c] || 0) + 1);
+    const guards = (n['1'] || 0) + (n['2'] || 0) + (n['3'] || 0) + (n['4'] || 0);
+    const items = [];
+    const add = (lvl, txt) => items.push([lvl, txt]);
+    ['X', 'K', 'E'].forEach(c => { const name = { X: 'Start', K: 'Key', E: 'Exit' }[c]; add((n[c] || 0) === 1 ? 'ok' : 'bad', `${name}: ${n[c] || 0} (needs exactly 1)`); });
+    add((n.G || 0) === 1 ? 'ok' : 'warn', `Gems: ${n.G || 0} (one per level)`);
+    add(guards <= 6 ? 'ok' : 'bad', `Guards: ${guards} of 6`);
+    const poem = lv.poem.filter(l => l.trim());
+    add(poem.length ? 'ok' : 'bad', poem.length ? `Poem: ${poem.length} line${poem.length > 1 ? 's' : ''}` : 'Poem is empty (an empty poem ends the level list)');
+    const long = poem.filter(l => l.length > 22).length;
+    if (long) add('warn', `${long} poem line${long > 1 ? 's are' : ' is'} over 22 characters and may run off screen`);
+    if ((n.T || 0) && !(n.P || 0) && !(n.H || 0)) add('bad', 'Gates but no plate or lever to open them');
+    if ((n.P || 0) && !(n.B || 0)) add('warn', 'Plate but no crate');
+    $('checks').innerHTML = items.map(([l, t]) => `<li><span class="chip ${l}">${l === 'ok' ? 'OK' : l === 'warn' ? 'NOTE' : 'FIX'}</span><span></span></li>`).join('');
+    [...$('checks').querySelectorAll('li > span:last-child')].forEach((s, i) => s.textContent = items[i][1]);
+    $('counts').textContent = `crates ${n.B || 0} · traps ${n.F || 0} · guards ${guards}`;
+    return items.some(([l]) => l === 'bad');
+  }
+
+  // ---- solver ----
+  let worker = null;
+  function makeWorker() {
+    try { const src = $('solverSrc').textContent; return new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' }))); } catch (e) { return null; }
+  }
+  // ---- test results cache: same map + same options = same result ----
+  const TESTS = 'fk-editor-tests-v1';
+  let testCache = {};
+  try { testCache = JSON.parse(localStorage.getItem(TESTS) || '{}') || {}; } catch (e) { }
+  function testKey() {
+    const rows = levels[cur].map, steps = +$('optSteps').value, ghost = $('optGhost').checked;
+    const needGem = $('optGem').checked && rows.join('').includes('G');
+    return rows.join('') + '|' + steps + '|' + (ghost ? 1 : 0) + '|' + (needGem ? 1 : 0) + ($('optMode').value === 'fast' ? '|fast' : '');
+  }
+  function storeTest(key, text, path) {
+    testCache[key] = { text, path };
+    const keys = Object.keys(testCache); if (keys.length > 200) delete testCache[keys[0]];
+    try { localStorage.setItem(TESTS, JSON.stringify(testCache)); } catch (e) { }
+  }
+  function showCachedTest() {
+    const hit = testCache[testKey()];
+    if (!hit) return false;
+    $('solveOut').textContent = hit.text + '\n(saved result, map unchanged)';
+    solvePath = hit.path; render(); return true;
+  }
+  let testing = false;
+  function stopTest(msg) {
+    if (worker) { worker.terminate(); worker = null; }
+    if (testing) { testing = false; $('btnSolve').textContent = 'Test level'; if (msg) $('solveOut').textContent = msg; }
+  }
+  ['optMode', 'optSteps', 'optGhost', 'optGem'].forEach(id => $(id).addEventListener('change', () => {
+    stopTest(); solvePath = null; $('solveOut').textContent = 'Not tested yet.'; render();
+  }));
+  $('btnSolve').onclick = () => {
+    const out = $('solveOut');
+    if (testing) { stopTest('Test stopped.'); return; }
+    if (renderChecks()) { out.textContent = 'Fix the red items first.'; return; }
+    if (showCachedTest()) return;
+    stopTest();
+    worker = makeWorker();
+    const key = testKey();
+    const rows = levels[cur].map.slice(), steps = +$('optSteps').value, ghost = $('optGhost').checked;
+    const needGem = $('optGem').checked && rows.join('').includes('G'), fast = $('optMode').value === 'fast';
+    const lines = [`${fast ? 'Quick search' : 'Searching'} (${steps} step${steps > 1 ? 's' : ''} per guard step${needGem ? ', with the gem' : ''}${ghost ? ', guards ignore crates' : ''})…`];
+    out.textContent = lines[0]; testing = true; $('btnSolve').textContent = 'Stop test';
+    const at = p => `x ${p % 16}, y ${(p / 16) | 0}`;
+    let path = null;
+    const handle = (m) => {
+      if (!testing) return;
+      if (m.kind === 'main') {
+        lines.length = 0;
+        if (m.res.ok) { lines.push(`Beatable${needGem ? ' with the gem' : ''}: ${fast ? 'found a run of' : 'shortest run is'} ${m.res.moves} moves${fast ? ' (maybe not the shortest)' : ''}.`); path = m.res.path; solvePath = path; render(); }
+        else lines.push(m.res.limit ? (fast ? 'Search too large, stopped. Try "Shortest route" or fewer crates or guards.' : 'Search too large, stopped. Try "Any route (faster)", or fewer crates or guards.') : needGem ? 'Not beatable when the gem has to be collected too.' : 'Not beatable with these rules.');
+      } else if (m.kind === 'gem') {
+        lines.push(m.res.ok ? `Gem at ${at(m.gem)}: reachable in ${m.res.moves} moves.` : `Gem at ${at(m.gem)}: ${m.res.limit ? 'search too large' : 'NOT reachable'}.`);
+      } else if (m.kind === 'done') { storeTest(key, lines.join('\n'), path); testing = false; $('btnSolve').textContent = 'Test level'; worker = null; }
+      out.textContent = lines.join('\n');
+    };
+    if (worker) { worker.onmessage = e => handle(e.data); worker.onerror = () => { stopTest('The solver crashed.'); }; worker.postMessage({ rows, steps, ghost, needGem, fast }); }
+    else {
+      // no workers: run inline
+      const fn = new Function($('solverSrc').textContent.replace(/self\.onmessage[\s\S]*$/, '') + '; return solve;')();
+      setTimeout(() => {
+        const main = fn(rows, null, steps, ghost, 1500000, needGem, fast); handle({ kind: 'main', res: main });
+        rows.forEach((r, y) => [...r].forEach((c, x) => { if (c === 'G') handle({ kind: 'gem', gem: y * 16 + x, res: fn(rows, y * 16 + x, steps, ghost, 1500000, false, fast) }); }));
+        handle({ kind: 'done' });
+      }, 30);
+    }
+  };
+
+  // ---- level list buttons ----
+  $('btnNew').onclick = () => { remember(); levels.splice(cur + 1, 0, { poem: ['NEW LEVEL'], map: blankMap() }); save(); select(cur + 1); };
+  $('btnDup').onclick = () => { remember(); const l = levels[cur]; levels.splice(cur + 1, 0, { poem: [...l.poem], map: [...l.map] }); save(); select(cur + 1); };
+  $('btnUp').onclick = () => { if (cur > 0) { remember(); [levels[cur - 1], levels[cur]] = [levels[cur], levels[cur - 1]]; save(); select(cur - 1); } };
+  $('btnDown').onclick = () => { if (cur < levels.length - 1) { remember(); [levels[cur + 1], levels[cur]] = [levels[cur], levels[cur + 1]]; save(); select(cur + 1); } };
+  function hideDel() { $('btnDel').hidden = false; $('btnDelYes').hidden = true; $('btnDelNo').hidden = true; }
+  $('btnDel').onclick = () => { $('btnDel').hidden = true; $('btnDelYes').hidden = false; $('btnDelNo').hidden = false; };
+  $('btnDelNo').onclick = hideDel;
+  $('btnDelYes').onclick = () => { remember(); levels.splice(cur, 1); save(); select(Math.min(cur, levels.length - 1)); };
+
+  // ---- import / export ----
+  const toast = t => { $('toast').textContent = t; clearTimeout(toast.h); toast.h = setTimeout(() => $('toast').textContent = '', 4000); };
+  $('btnExport').onclick = async () => {
+    const txt = buildFKLVL(levels); const io = $('io'); io.value = txt;
+    try { await navigator.clipboard.writeText(txt); toast(`Copied FKLVL.txt with ${levels.length} levels.`); }
+    catch (e) { io.focus(); io.select(); toast('Copy was blocked. The text is selected, press Ctrl+C.'); }
+  };
+  $('btnImport').onclick = () => {
+    try { const l = parseFKLVL($('io').value); remember(); levels = l; save(); select(0); toast(`Imported ${l.length} levels.`); }
+    catch (e) { toast(''); $('toast').style.color = 'var(--bad)'; $('toast').textContent = e.message; setTimeout(() => $('toast').style.color = '', 5000); }
+  };
+  $('btnReset').onclick = () => { $('btnResetYes').hidden = false; };
+  $('btnResetYes').onclick = () => { remember(); levels = SHIPPED.map(l => ({ poem: [...l.poem], map: [...l.map] })); save(); $('btnResetYes').hidden = true; select(0); toast(`Restored the ${SHIPPED.length} shipped levels.`); };
+
+  $('selShip').innerHTML = SHIPPED.map((l, i) => `<option value="${i}">Shipped ${i + 1}: ${(l.poem[0] || '').replace(/[<&]/g, '')}</option>`).join('');
+  $('btnShip').onclick = () => {
+    const i = +$('selShip').value; remember();
+    levels[cur] = { poem: [...SHIPPED[i].poem], map: [...SHIPPED[i].map] };
+    save(); select(cur); toast(`Loaded shipped level ${i + 1} into slot ${cur + 1}. Undo reverts it.`);
+  };
+  // ================= play mode: same rules and timing as FKSRC =================
+  // Timing model for a TI-83+ at 6 MHz: one main loop = Pause 10 (5.6 ms) + logic,
+  // every redraw costs about 24 ms (80 tile lookups + Pt-Off ~11 ms, DispGraph ~10 ms,
+  // guards and sight ~3 ms), Pause 1800 = 1 s. Estimated, not measured on the calculator.
+  const T_LOOP = 6.2, T_DRAW = 24, T_PAUSE = ms => ms / 1.8; // redraw: 80 tiles + DispGraph
+  const P = (() => {
+    const HEX = ['0000000000000000', 'FF888888FF222222', '0060909F9A600000', '7E4242424A42427E', '00183C7E7E3C1800',
+      '00004949DBDBFF00', 'FFC3A59999A5C3FF', '00007E42427E0000', 'FF555555555555FF', '000040201008183C',
+      'FFFFE7DBDBE7FFFF', '8100000000000081', '000002040810183C', 'FFC3A59999A5C3FF'];
+    const bits = h => { const r = []; for (let i = 0; i < 16; i += 2) r.push(parseInt(h.slice(i, i + 2), 16)); return r; };
+    return {
+      tiles: HEX.map(bits), player: [bits('7C547C7464FE386C'), bits('7C547C74E67C3828')],
+      guard: bits('3C7E5A7E3C7EBD24'), heart: bits('006CFEFE7C381000'), dots: bits('0000240000240000'), black: bits('FFFFFFFFFFFFFFFF')
+    };
+  })();
+  const flipBits = b => b.map(v => { let r = 0; for (let i = 0; i < 8; i++) if (v & (1 << i)) r |= 128 >> i; return r; });
+  // 3x5 pixel font
+  const FONT = {"A":".#.#.#####.##.#","B":"##.#.###.#.###.","C":".###..#..#...##","D":"##.#.##.##.###.","E":"####..##.#..###","F":"####..##.#..#..","G":".###..#.##.#.##","H":"#.##.#####.##.#","I":"###.#..#..#.###","J":"..#..#..##.#.#.","K":"#.##.###.#.##.#","L":"#..#..#..#..###","M":"#.########.##.#","N":"##.#.##.##.##.#","O":".#.#.##.##.#.#.","P":"##.#.###.#..#..","Q":".#.#.##.###..##","R":"##.#.###.#.##.#","S":".###...#...###.","T":"###.#..#..#..#.","U":"#.##.##.##.####","V":"#.##.##.##.#.#.","W":"#.##.########.#","X":"#.##.#.#.#.##.#","Y":"#.##.#.#..#..#.","Z":"###..#.#.#..###","0":"####.##.##.####","1":".#.##..#..#.###","2":"##...#.#.#..###","3":"##...#.#...###.","4":"#.##.####..#..#","5":"####..##...###.","6":".###..####.####","7":"###..#.#..#..#.","8":"####.#####.####","9":"####.####..###.",".":".............#.",",":"..........#.#..","!":".#..#..#.....#.","?":"##...#.#.....#.",":":"....#.....#....","'":".#..#..........","-":"......###......","=":"...###...###...","/":"..#..#.#.#..#..","<":"..#.#.#...#...#",">":"#...#...#.#.#..","(":".#.#..#..#...#.",")":".#...#..#..#.#."," ":"..............."};
+
+  const scr = $('screen'), sctx = scr.getContext('2d');
+  const img = sctx.createImageData(96, 64);
+  const buf = new Uint8Array(96 * 64); // 1 = black pixel
+  const ON = [0x1d, 0x26, 0x18], OFF = [0xa7, 0xb2, 0x93];
+
+  const px = (x, y, v) => { if (x >= 0 && y >= 0 && x < 96 && y < 64) buf[y * 96 + x] = v; };
+  const fill = v => buf.fill(v);
+  function spr(x, y, b, mode) { // mode 'off' = overwrite (Pt-Off), 'on' = OR (Pt-On)
+    for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+      const on = b[r] & (128 >> c);
+      if (mode === 'on') { if (on) px(x + c, y + r, 1); } else px(x + c, y + r, on ? 1 : 0);
+    }
+  }
+  function text(x, y, s, ink, scale = 1) {
+    for (const ch of s.toUpperCase()) {
+      const g = FONT[ch] || FONT['?'];
+      for (let r = 0; r < 5; r++) for (let c = 0; c < 3; c++) if (g[r * 3 + c] === '#')
+        for (let a = 0; a < scale; a++) for (let b = 0; b < scale; b++) px(x + c * scale + b, y + r * scale + a, ink);
+      x += 4 * scale;
+    }
+  }
+  const textW = (s, scale = 1) => s.length * 4 * scale - scale;
+  function blit(invert) {
+    for (let i = 0; i < buf.length; i++) {
+      const c = (buf[i] ^ (invert ? 1 : 0)) ? ON : OFF;
+      img.data[i * 4] = c[0]; img.data[i * 4 + 1] = c[1]; img.data[i * 4 + 2] = c[2]; img.data[i * 4 + 3] = 255;
+    }
+    sctx.putImageData(img, 0, 0);
+  }
+
+  // ---- game state (names follow FKSRC) ----
+  let G = null; // whole game
+  const DIRS = { 1: [0, 1], 2: [-1, 0], 3: [1, 0], 4: [0, -1] };
+  const held = { 1: false, 2: false, 3: false, 4: false };
+  const tapped = { 1: false, 2: false, 3: false, 4: false }; // short taps between two loops
+  let pressQueue = [], anyHeld = 0;
+
+  function startGame(fromIdx) {
+    G = { lv: levels.map(l => ({ poem: [...l.poem], map: [...l.map] })), L: fromIdx + 1, H: 3, gems: 0, gemHere: 0, mode: 'story', t: 0, acc: 0, waitRelease: true, raf: 0, last: 0 };
+    grid.hidden = true; scr.hidden = false; $('playNote').hidden = false;
+    $('btnPlay').textContent = 'Stop playing';
+    pressQueue = []; startLevel();
+    G.last = performance.now(); G.raf = setTimeout(() => frame(performance.now()), 15);
+    scr.focus();
+  }
+  function stopGame() {
+    if (G) clearTimeout(G.raf);
+    G = null; grid.hidden = false; scr.hidden = true; $('playNote').hidden = true;
+    $('btnPlay').textContent = 'Play level'; render();
+    Object.keys(held).forEach(k => held[k] = false); anyHeld = 0; down.clear();
+  }
+
+  function startLevel() { // Lbl NS: gem from a failed try is taken back, then the poem screen
+    if (G.gemHere) { G.gems--; G.gemHere = 0; }
+    G.mode = 'story'; G.t = 0; G.waitRelease = true; pressQueue = [];
+  }
+  function loadLevel() { // Lbl LD + start values
+    const rows = G.lv[G.L - 1].map;
+    G.map = []; G.guards = [];
+    const codes = { '.': 0, W: 1, K: 2, E: 3, G: 4, F: 5, B: 6, P: 7, T: 8, H: 9 };
+    for (let y = 0; y < 12; y++) for (let x = 0; x < 16; x++) {
+      const c = rows[y][x];
+      if (c === 'X') { G.X = x; G.Y = y; G.map.push(0); }
+      else if ('1234'.includes(c)) { G.guards.push([x, y, +c]); G.map.push(0); }
+      else G.map.push(codes[c] ?? 0);
+    }
+    G.flash = null; G.R = Math.max(1, 34 - G.L); G.K = 0; G.W = 0; G.T = 0; G.F = 0; G.N = 0; G.C = 0; G.O = 0; G.V = 1;
+  }
+  const tileAt = (x, y) => (x < 0 || y < 0 || x > 15 || y > 11) ? 1 : G.map[y * 16 + x];
+  const setTile = (x, y, v) => { G.map[y * 16 + x] = v; };
+  const open = () => G.C + G.O !== 0;
+  const blocksSight = t => t === 1 || t === 3 || t === 6 || t > 8 || (t === 8 && !open());
+
+  function hit() { // Lbl HT
+    if (G.W) return;
+    G.H--;
+    G.flash = { invert: true, ms: T_PAUSE(1800) };
+    G.W = G.H === 0 ? 2 : 3;
+  }
+  function seeCheck() { // Lbl CC
+    let z = false;
+    for (const [gx, gy, gd] of G.guards) {
+      if (!(gx === G.X || gy === G.Y)) continue;
+      if (!(Math.abs(gx - G.X) <= 3 && Math.abs(gy - G.Y) <= 3)) continue;
+      let x = gx, y = gy;
+      for (let i = 0; i < 4; i++) {
+        if (x === G.X && y === G.Y) z = true;
+        x += DIRS[gd][0]; y += DIRS[gd][1];
+        if (blocksSight(tileAt(x, y))) break;
+      }
+    }
+    if (z) hit();
+  }
+  function move(d) { // Lbl MV, returns number of redraws
+    G.V = d;
+    const [dx, dy] = DIRS[d];
+    let a = G.X + dx, b = G.Y + dy, g = tileAt(a, b);
+    if (g === 1 || g === 9) return 0;
+    if (g === 8 && !open()) return 0;
+    if (g === 3) { if (!G.K) return 0; G.W = 1; }
+    if (g === 6 || g === 10 || g === 13) {
+      const e = g, ux = a, uy = b; const a2 = a + dx, b2 = b + dy;
+      if (G.guards.some(([gx, gy]) => gx === a2 && gy === b2)) return 0;
+      const g2 = tileAt(a2, b2);
+      if (g2 === 0) setTile(a2, b2, 6);
+      else if (g2 === 7) { setTile(a2, b2, 10); G.O++; }
+      else if (g2 === 5) setTile(a2, b2, 0);
+      else if (g2 === 8 && open()) setTile(a2, b2, 13);
+      else return 0;
+      if (e === 10) { setTile(ux, uy, 7); G.O--; } else if (e === 13) setTile(ux, uy, 8); else setTile(ux, uy, 0);
+      g = 0;
+    }
+    if (g === 2) { G.K = 1; setTile(a, b, 0); }
+    if (g === 4) {
+      setTile(a, b, 0); G.gems++; G.gemHere = 1;
+      if (G.gems % 5 === 0) { if (G.H < 9) G.H++; G.flash = { black: true, ms: T_PAUSE(300) }; }
+    }
+    G.X = a; G.Y = b; G.F = 1 - G.F;
+    if (g === 5) hit();
+    seeCheck();
+    return 1;
+  }
+  function action() { // Lbl AC: lever in front
+    const [dx, dy] = DIRS[G.V];
+    if (tileAt(G.X + dx, G.Y + dy) === 9) { G.C = 1 - G.C; return 1; }
+    return 0;
+  }
+  function guardsStep() { // Lbl GU, returns 1 if a guard is near (redraw)
+    let near = 0;
+    for (const g of G.guards) {
+      const a = g[0] + DIRS[g[2]][0], b = g[1] + DIRS[g[2]][1], t = tileAt(a, b);
+      if (t === 0 || t === 2 || t === 4 || t === 7 || (t === 8 && open())) { g[0] = a; g[1] = b; } else g[2] = 5 - g[2];
+      if (g[0] - G.X + 9 < 18 && g[0] - G.X + 9 >= 0 && Math.abs(g[1] - G.Y) <= 7) near = 1;
+    }
+    return near;
+  }
+  function heldDir() { // Lbl HD: later checks win, like the Axe code
+    let d = 0; for (const k of [1, 2, 3, 4]) { if (held[k] || tapped[k]) d = k; tapped[k] = false; } return d;
+  }
+  function loopOnce() { // one pass of the main While loop; returns its cost in ms
+    let draws = 0;
+    const key = pressQueue.shift() || 0;
+    if (key === 'clear') { stopGame(); return 0; }
+    if (key === 'mode') { G.H--; if (G.H === 0) { gameOver(); return 0; } startLevel(); return 0; }
+    if (key === '2nd') draws += action();
+    let d = heldDir();
+    if (d) {
+      if (G.T === 0) G.T = 1;
+      else { G.T++; if (G.T > 24) G.T = 14; else d = 0; }
+    } else G.T = 0;
+    if (d) draws += move(d);
+    G.N++;
+    if (G.N > G.R && !G.W) { G.N = 0; draws += guardsStep(); seeCheck(); }
+    return T_LOOP + draws * T_DRAW;
+  }
+  function afterLoop() {
+    if (G.W === 1) { G.gemHere = 0; G.L++; if (G.L > G.lv.length) theEnd(); else startLevel(); }
+    else if (G.W === 2) gameOver();
+    else if (G.W === 3) startLevel();
+  }
+  function gameOver() { G.mode = 'over'; G.t = 0; G.waitRelease = true; pressQueue = []; }
+  function theEnd() { G.mode = 'end'; G.t = 0; G.waitRelease = true; pressQueue = []; }
+
+  // ---- drawing (DR + HU) ----
+  function drawGame() {
+    fill(1);
+    // whole screen right of the HUD: 10x8 tiles, player at (48,24) like Lbl VT in FKSRC
+    for (let j = 0; j < 8; j++) for (let i = 0; i < 10; i++) {
+      let t = tileAt(G.X + i - 4, G.Y + j - 3);
+      if (t === 8 && open()) t = 11; else if (t === 9 && G.C) t = 12;
+      spr(i * 8 + 16, j * 8, P.tiles[t], 'off');
+    }
+    const vis = (x, y) => { const d = x - G.X, e = y - G.Y; return d >= -4 && d <= 5 && e >= -3 && e <= 4 ? [d * 8 + 48, e * 8 + 24] : null; };
+    for (const [gx, gy, gd] of G.guards) {
+      if (Math.abs(gx - G.X) > 10 || Math.abs(gy - G.Y) > 10) continue;
+      let v = vis(gx, gy); if (v) spr(v[0], v[1], P.guard, 'off');
+      let x = gx, y = gy;
+      for (let i = 0; i < 3; i++) {
+        x += DIRS[gd][0]; y += DIRS[gd][1];
+        if (blocksSight(tileAt(x, y))) break;
+        v = vis(x, y); if (v) spr(v[0], v[1], P.dots, 'on');
+      }
+    }
+    const pl = P.player[G.F];
+    spr(48, 24, G.V === 2 ? flipBits(pl) : pl, 'off');
+    // HUD left, inverted text
+    text(1, 1, 'L' + G.L, 0);
+    spr(0, 14, P.heart, 'off');
+    text(2, 23, String(G.H), 0);
+    spr(0, 32, P.tiles[4], 'off');
+    text(1, 41, String(G.gems), 0);
+    if (G.K) spr(0, 54, P.tiles[2], 'off');
+  }
+  function drawStory(showPress) {
+    fill(0);
+    const head = 'LEVEL ' + G.L; text((96 - textW(head, 2)) >> 1, 1, head, 1, 2);
+    G.lv[G.L - 1].poem.filter(l => l.trim()).slice(0, 5).forEach((l, j) => text(2, 14 + j * 7, l, 1));
+    text(2, 51, 'LIVES ' + G.H, 1); text(54, 51, 'GEMS ' + G.gems, 1);
+    if (showPress) text((96 - textW('PRESS A KEY')) >> 1, 58, 'PRESS A KEY', 1);
+  }
+  function drawVerse(head, lines, showPress) {
+    fill(0);
+    text((96 - textW(head, 2)) >> 1, 4, head, 1, 2);
+    lines.forEach((l, j) => text(8, 22 + j * 7, l, 1));
+    if (showPress) text((96 - textW('PRESS A KEY')) >> 1, 58, 'PRESS A KEY', 1);
+  }
+
+  // ---- frame loop ----
+  function keyReady() { // like Lbl WK: release everything, then a new press
+    if (G.waitRelease) { if (!anyHeld) { G.waitRelease = false; pressQueue = []; } return false; }
+    const k = pressQueue.shift(); if (!k) return false;
+    if (k === 'clear') { stopGame(); return false; }
+    return true;
+  }
+  function frame(now) {
+    if (!G) return;
+    const dt = Math.min(100, now - G.last); G.last = now;
+    if (G.mode === 'story' || G.mode === 'over' || G.mode === 'end') {
+      G.t += dt; const ready = G.t >= T_PAUSE(1800);
+      if (G.mode === 'story') drawStory(ready);
+      else if (G.mode === 'over') drawVerse('GAME OVER', ['OUR HERO FELL,', 'THE BARDS WILL TELL', 'OF ONE BRAVE KNIGHT', 'AND ONE BAD SMELL.'], ready);
+      else drawVerse('THE END', ['HE FLED THE LAND,', 'AS THE KING PLANNED.', 'YET EVER SINCE,', 'THE WINDS BLOW GRAND.'], ready);
+      blit(false);
+      if (ready && keyReady()) {
+        if (G.mode === 'story') {
+          loadLevel(); G.mode = 'play'; G.acc = 0;
+          // the key that closed the story screen must not move the knight
+          Object.keys(held).forEach(k => { held[k] = false; tapped[k] = false; });
+          pressQueue = []; down.forEach(c => blocked.add(c));
+        }
+        else if (G.mode === 'over') { G.H = 3; G.gems = 0; G.gemHere = 0; startLevel(); } // editor: keep testing this level
+        else { stopGame(); return; }
+      }
+    } else if (G.mode === 'flash') {
+      G.t -= dt; blit(G.flashInvert);
+      if (G.t <= 0) { G.mode = 'play'; afterLoop(); }
+    } else if (G.mode === 'play') {
+      G.acc += dt;
+      while (G && G.mode === 'play' && G.acc > 0) {
+        G.acc -= loopOnce();
+        if (!G || G.mode !== 'play') break;
+        if (G.flash) {
+          drawGame(); if (G.flash.black) fill(1);
+          G.flashInvert = !!G.flash.invert; G.t = G.flash.ms; G.flash = null; G.mode = 'flash'; G.acc = 0;
+          break;
+        }
+        afterLoop();
+      }
+      if (G && G.mode === 'play') { drawGame(); blit(false); }
+    }
+    if (G) G.raf = setTimeout(() => frame(performance.now()), 15);
+  }
+
+  // ---- input ----
+  const KEYMAP = { ArrowDown: 1, ArrowLeft: 2, ArrowRight: 3, ArrowUp: 4, s: 1, a: 2, d: 3, w: 4, S: 1, A: 2, D: 3, W: 4 };
+  function press(k) { if (G) pressQueue.push(k); }
+  // every key that is down right now (for "release all, then press")
+  const down = new Set();
+  // keys still held from a text screen: ignored until released
+  const blocked = new Set();
+  const syncHeld = () => { anyHeld = down.size; };
+  document.addEventListener('keydown', e => {
+    if (!G) return;
+    e.stopPropagation(); e.preventDefault();
+    if (e.key === 'Escape') { stopGame(); return; }
+    const first = !down.has(e.code); down.add(e.code); syncHeld();
+    if (blocked.has(e.code)) return;
+    const dir = KEYMAP[e.key];
+    if (dir) { if (!held[dir]) { held[dir] = true; tapped[dir] = true; press('arrow'); } return; }
+    if (!first || e.repeat) return;
+    if (e.key === 'Shift') press('2nd');
+    else if (e.key === 'm' || e.key === 'M' || e.key === 'r' || e.key === 'R') press('mode');
+    else press('any'); // any other key counts for PRESS A KEY
+  }, true);
+  document.addEventListener('keyup', e => {
+    if (!G) return;
+    down.delete(e.code); syncHeld(); blocked.delete(e.code);
+    const dir = KEYMAP[e.key];
+    if (dir) held[dir] = false;
+  }, true);
+  window.addEventListener('blur', () => { Object.keys(held).forEach(k => held[k] = false); down.clear(); blocked.clear(); syncHeld(); });
+  // a click or tap on the game screen also counts as a key on the text screens
+  scr.addEventListener('pointerdown', e => { if (G && G.mode !== 'play') { e.preventDefault(); press('any'); } });
+  $('btnPlay').onclick = () => { if (G) stopGame(); else startGame(cur); };
+
+  renderPalette(); renderList(); renderPoem(); render(); updUndo();
+  $('io').value = buildFKLVL(levels);
+})();
+</script>

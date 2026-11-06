@@ -1,0 +1,98 @@
+.FKDATA
+.Writes the levels packed into AppVar FKLVLS.
+.Recompile and run once after every change to FKLVL.
+prgmFKLVL
+".WKEGFBPTHX1234"->Str0
+.FKLVLS
+[15464B4C564C5300]->Str8
+.First only count (Q=0), then write
+0->Q
+sub(PK)
+D->L
+GetCalc(Str8,L)->Q
+ClrHome
+!If Q
+	Disp "NOT ENOUGH RAM"
+	Return
+End
+sub(PK)
+Disp "SAVE LEVELS"
+Return
+
+.Copy poems, then map: length byte and
+.half bytes (tile, or 15,tile,n = n+4 times tile)
+Lbl PK
+GDB1+1->P
+Q->D
+0->A
+sub(WB)
+While {P}
+	While {P}
+		While {P}
+			{P}->A
+			sub(WB)
+			P+1->P
+		End
+		0->A
+		sub(WB)
+		P+1->P
+	End
+	0->A
+	sub(WB)
+	P+1->P
+	.Length byte, filled in after the map
+	D->U
+	sub(WB)
+	0->N->I
+	While I<140
+		inData({P+I},Str0,15)-1->C
+		.Run of the same tile, at most 19
+		1->R
+		While I+R<140 and (R<19) and (inData({P+I+R},Str0,15)-1=C)
+			R+1->R
+		End
+		If R<4
+			1->R
+			C->A
+			sub(WN)
+		Else
+			15->A
+			sub(WN)
+			C->A
+			sub(WN)
+			R-4->A
+			sub(WN)
+		End
+		I+R->I
+	End
+	.Last half byte
+	If N^2
+		B*16->A
+		sub(WB)
+	End
+	If Q
+		D-U-1->{U}
+	End
+	P+140->P
+End
+0->A
+sub(WB)
+D-Q->D
+Return
+
+.Write half byte A, first one is the high half
+Lbl WN
+If N^2
+	B*16+A->A
+	sub(WB)
+End
+A->B
+N+1->N
+Return
+
+Lbl WB
+If Q
+	A->{D}
+End
+D+1->D
+Return
