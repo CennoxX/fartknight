@@ -29,9 +29,9 @@ Run it with `Asm(prgmFKNIGHT)` from the home screen, or from a shell such as Mir
 
 | File | Purpose |
 |------|---------|
-| `FKSRC.txt` | Game source (Axe), compiles to `FKNIGHT` |
-| `FKLVL.txt` | Level data and poems, included by `FKDATSRC` |
-| `FKDATSRC.txt` | Level packer: writes the levels into AppVar `FKLVLS` |
+| `source/FKSRC.txt` | Game source (Axe), compiles to `FKNIGHT` |
+| `source/FKLVL.txt` | Level data and poems, included by `FKDATSRC` |
+| `source/FKDATSRC.txt` | Level packer: writes the levels into AppVar `FKLVLS` |
 | `tools/fk_editor.html` | Browser level editor (import/export `FKLVL.txt`) |
 | `tools/FK_levelcheck.py` | Exact solver: checks solvability, guard timing, gem reachability |
 | `tools/FK_fastcheck.py` | Fast best-first solver, also for draft levels |
